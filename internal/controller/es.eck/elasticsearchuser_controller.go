@@ -169,7 +169,7 @@ func (r *ElasticsearchUserReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 		return ctrl.Result{}, nil
 	}
-	return ctrl.Result{}, nil
+
 }
 
 func userSetCondition(obj *eseckv1alpha1.ElasticsearchUser, c metav1.Condition) {
