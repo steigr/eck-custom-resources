@@ -151,6 +151,9 @@ func (r *ElasticsearchUserReconciler) Reconcile(ctx context.Context, req ctrl.Re
 			r.Recorder.Event(&user, "Warning", "patching",
 				fmt.Sprintf("patching status after error %v", perr))
 		}
+		if err := r.addFinalizer(&user, finalizer, ctx); err != nil {
+			return ctrl.Result{}, err
+		}
 		return res, err
 
 	} else {

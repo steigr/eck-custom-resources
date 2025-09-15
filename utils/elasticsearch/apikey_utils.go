@@ -56,11 +56,10 @@ func DeleteApikey(cli client.Client, ctx context.Context, esClient *elasticsearc
 	res, err := esClient.Security.InvalidateAPIKey(strings.NewReader(fmt.Sprintf(`{"ids": "%s"}`, apikeyID)),
 		esClient.Security.InvalidateAPIKey.WithContext(context.Background()))
 
-	defer res.Body.Close()
-
 	if err != nil || res.IsError() {
 		return utils.GetRequeueResult(), fmt.Errorf("error response from InvalidateAPIKey: %s", apikeyID)
 	}
+	defer res.Body.Close()
 
 	if err := DeleteApikeySecret(cli, ctx, req.Namespace, req.Name); err != nil {
 		return utils.GetRequeueResult(), err
@@ -106,11 +105,12 @@ func UpdateExpirationApikey(cli client.Client, ctx context.Context, esClient *el
 		esClient.Security.UpdateAPIKey.WithBody(bytes.NewReader(expirationBody)),
 		esClient.Security.UpdateAPIKey.WithContext(ctx),
 	)
+	
+
 	if err != nil {
 		return utils.GetRequeueResult(), fmt.Errorf("update API key %q Expiration call failed: %w", apikey.ID, err)
 	}
 	defer res.Body.Close()
-
 	return ctrl.Result{}, nil
 }
 func GetApiKeyWithID(cli client.Client, ctx context.Context, esClient *elasticsearch.Client, apiKeyID string) (APIKey, error) {
@@ -210,7 +210,7 @@ func CreateApikey(cli client.Client, ctx context.Context, esClient *elasticsearc
 	}
 
 	var responseMap map[string]interface{}
-	err = json.Unmarshal([]byte(body), &responseMap)
+	err = json.Unmarshal(body, &responseMap)
 	if err != nil {
 		return utils.GetRequeueResult(), err
 	}
@@ -334,7 +334,7 @@ func CreateApikeyold(cli client.Client, ctx context.Context, esClient *elasticse
 		}
 
 		var responseMap map[string]interface{}
-		err = json.Unmarshal([]byte(body), &responseMap)
+		err = json.Unmarshal(body, &responseMap)
 		if err != nil {
 			return utils.GetRequeueResult(), err
 		}
