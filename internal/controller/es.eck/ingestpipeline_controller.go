@@ -82,11 +82,13 @@ func (r *IngestPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	if ingestPipeline.ObjectMeta.DeletionTimestamp.IsZero() {
+		logger.Info("Creating/Updating object", "ingestPipeline", ingestPipeline.Name)
 		// Determine the body to use - either rendered from template or original
 		body := ingestPipeline.Spec.Body
 
 		// Check if template references are defined
 		if template.HasTemplateReferences(ingestPipeline.Spec.Template) {
+			logger.Info("Template references found, rendering template")
 			// Fetch all referenced ResourceTemplateData objects
 			resourceTemplateDataList, err := template.FetchResourceTemplateData(
 				r.Client,

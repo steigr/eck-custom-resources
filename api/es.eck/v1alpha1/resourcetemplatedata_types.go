@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -27,6 +28,11 @@ import (
 type ResourceTemplateDataSpec struct {
 	// +optional
 	TargetConfig CommonElasticsearchConfig `json:"targetInstance,omitempty"`
+
+	// Values provides a nested map of values to be used by templates
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +required
+	Values map[string]apiextensionsv1.JSON `json:"values"`
 }
 
 // ResourceTemplateDataStatus defines the observed state of ResourceTemplateData.
@@ -52,10 +58,6 @@ type ResourceTemplateData struct {
 	// spec defines the desired state of ResourceTemplateData
 	// +required
 	Spec ResourceTemplateDataSpec `json:"spec"`
-
-	// data provides key-value pairs to be used
-	// +required
-	Data map[string]string `json:"data"`
 
 	// status defines the observed state of ResourceTemplateData
 	// +optional
