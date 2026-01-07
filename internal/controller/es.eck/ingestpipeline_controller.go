@@ -109,6 +109,7 @@ func (r *IngestPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 					fmt.Sprintf("Failed to render template: %s", err.Error()))
 				return utils.GetRequeueResult(), err
 			}
+			logger.Info("Template rendered successfully: ", "body", renderedBody)
 			body = renderedBody
 		}
 
