@@ -98,6 +98,7 @@ func RenderBody(body string, resourceTemplateDataList []eseckv1alpha1.ResourceTe
 
 // RenderBodyWithValues renders the given body template using a pre-built values map.
 // This is useful when you want more control over the template data structure.
+// Values are accessible in templates via .Values.key syntax (Helm convention).
 func RenderBodyWithValues(body string, values map[string]interface{}, config *rest.Config) (string, error) {
 	// Create a minimal chart with just our template
 	chrt := &v2.Chart{
@@ -114,8 +115,13 @@ func RenderBodyWithValues(body string, values map[string]interface{}, config *re
 		},
 	}
 
+	// Wrap values under "Values" key as Helm expects
+	wrappedValues := map[string]interface{}{
+		"Values": values,
+	}
+
 	// Render the chart using RenderWithClient to enable client-aware template functions (e.g., lookup)
-	rendered, err := engine.RenderWithClient(chrt, values, config)
+	rendered, err := engine.RenderWithClient(chrt, wrappedValues, config)
 	if err != nil {
 		return "", fmt.Errorf("failed to render template: %w", err)
 	}
