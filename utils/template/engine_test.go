@@ -11,6 +11,94 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
+func TestToCamelCase(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "empty string",
+			input: "",
+			want:  "",
+		},
+		{
+			name:  "single word lowercase",
+			input: "hello",
+			want:  "hello",
+		},
+		{
+			name:  "single word uppercase",
+			input: "HELLO",
+			want:  "hello",
+		},
+		{
+			name:  "kebab-case",
+			input: "my-resource-name",
+			want:  "myResourceName",
+		},
+		{
+			name:  "snake_case",
+			input: "my_resource_name",
+			want:  "myResourceName",
+		},
+		{
+			name:  "PascalCase",
+			input: "MyResourceName",
+			want:  "myresourcename",
+		},
+		{
+			name:  "already camelCase",
+			input: "myResourceName",
+			want:  "myresourcename",
+		},
+		{
+			name:  "space separated",
+			input: "my resource name",
+			want:  "myResourceName",
+		},
+		{
+			name:  "mixed separators",
+			input: "my-resource_name",
+			want:  "myResourceName",
+		},
+		{
+			name:  "single character",
+			input: "a",
+			want:  "a",
+		},
+		{
+			name:  "uppercase single character",
+			input: "A",
+			want:  "a",
+		},
+		{
+			name:  "numbers in name",
+			input: "my-resource-123",
+			want:  "myResource123",
+		},
+		{
+			name:  "rtd-1 style name",
+			input: "rtd-1",
+			want:  "rtd1",
+		},
+		{
+			name:  "database-config style name",
+			input: "database-config",
+			want:  "databaseConfig",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := toCamelCase(tt.input)
+			if got != tt.want {
+				t.Errorf("toCamelCase(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestHasTemplateReferences(t *testing.T) {
 	tests := []struct {
 		name         string
