@@ -76,7 +76,12 @@ func (r *ElasticsearchUserReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, nil
 	}
 
-	esClient, createClientErr := esutils.GetElasticsearchClient(r.Client, ctx, *targetInstance, req)
+	targetInstanceNamespace := req.Namespace
+	if user.Spec.TargetConfig.ElasticsearchInstanceNamespace != "" {
+		targetInstanceNamespace = user.Spec.TargetConfig.ElasticsearchInstanceNamespace
+	}
+
+	esClient, createClientErr := esutils.GetElasticsearchClient(r.Client, ctx, *targetInstance, req, targetInstanceNamespace)
 	if createClientErr != nil {
 		logger.Error(createClientErr, "Failed to create Elasticsearch client")
 		return utils.GetRequeueResult(), client.IgnoreNotFound(createClientErr)

@@ -67,7 +67,12 @@ func (r *SnapshotRepositoryReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, nil
 	}
 
-	esClient, createClientErr := esutils.GetElasticsearchClient(r.Client, ctx, *targetInstance, req)
+	targetInstanceNamespace := req.Namespace
+	if snapshotRepository.Spec.TargetConfig.ElasticsearchInstanceNamespace != "" {
+		targetInstanceNamespace = snapshotRepository.Spec.TargetConfig.ElasticsearchInstanceNamespace
+	}
+
+	esClient, createClientErr := esutils.GetElasticsearchClient(r.Client, ctx, *targetInstance, req, targetInstanceNamespace)
 	if createClientErr != nil {
 		logger.Error(createClientErr, "Failed to create Elasticsearch client")
 		return utils.GetRequeueResult(), client.IgnoreNotFound(createClientErr)
