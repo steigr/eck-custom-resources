@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -65,6 +64,19 @@ func init() {
 	// +kubebuilder:scaffold:scheme
 }
 
+type Namespaces struct {
+	value []string
+}
+
+func (ns *Namespaces) String() string {
+	return ""
+}
+
+func (ns *Namespaces) Set(s string) error {
+	ns.value = append(ns.value, s)
+	return nil
+}
+
 // nolint:gocyclo
 func main() {
 	var metricsAddr string
@@ -77,7 +89,7 @@ func main() {
 	var tlsOpts []func(*tls.Config)
 	var configFile string
 	var syncPeriod int
-	var watchNamespacesString string
+	var namespaces = Namespaces{}
 	flag.StringVar(&configFile, "config", "",
 		"The controller will load its initial configuration from this file. "+
 			"Omit this flag to use the default configuration values. "+
@@ -98,7 +110,7 @@ func main() {
 		"The directory that contains the metrics server certificate.")
 	flag.StringVar(&metricsCertName, "metrics-cert-name", "tls.crt", "The name of the metrics server certificate file.")
 	flag.StringVar(&metricsCertKey, "metrics-cert-key", "tls.key", "The name of the metrics server key file.")
-	flag.StringVar(&watchNamespacesString, "watch-namespaces", "", "")
+	flag.Var(&namespaces, "watch-namespaces", "Namespaces the operator should watch.")
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 	opts := zap.Options{
@@ -129,16 +141,7 @@ func main() {
 		setupLog.Error(err, "Failed to load ProjectConfigSpec")
 	}
 
-	namespaces := []string{}
-
-	for _, ns := range strings.Split(watchNamespacesString, ",") {
-		trimmed := strings.TrimSpace(ns)
-		if trimmed != "" {
-			namespaces = append(namespaces, trimmed)
-		}
-	}
-
-	if len(namespaces) == 0 {
+	if len(namespaces.value) == 0 {
 		// read namespace from service account
 		nsBytes, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
 		if err != nil {
@@ -146,17 +149,17 @@ func main() {
 			os.Exit(1)
 		}
 		namespace := string(nsBytes)
-		namespaces = append(namespaces, namespace)
+		namespaces.value = append(namespaces.value, namespace)
 	}
 
-	if len(namespaces) == 1 {
-		setupLog.Info(fmt.Sprintf("Watch namespace: %v", namespaces[0]))
+	if len(namespaces.value) == 1 {
+		setupLog.Info(fmt.Sprintf("Watch namespace: %v", namespaces.value[0]))
 	} else {
 		setupLog.Info(fmt.Sprintf("Watch namespaces: %v", namespaces))
 	}
 
 	cacheNamespace := map[string]cache.Config{}
-	for _, ns := range namespaces {
+	for _, ns := range namespaces.value {
 		cacheNamespace[ns] = cache.Config{}
 	}
 
