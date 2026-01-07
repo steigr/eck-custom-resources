@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -73,7 +75,15 @@ func (ns *Namespaces) String() string {
 }
 
 func (ns *Namespaces) Set(s string) error {
-	ns.value = append(ns.value, s)
+	for _, namespace := range strings.Split(",", s) {
+		if strings.TrimSpace(namespace) == "" {
+			continue
+		}
+		if slices.Contains(ns.value, namespace) {
+			continue
+		}
+		ns.value = append(ns.value, namespace)
+	}
 	return nil
 }
 
