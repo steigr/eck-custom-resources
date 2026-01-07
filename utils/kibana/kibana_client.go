@@ -64,9 +64,14 @@ func (kClient Client) getHttpClient() (*http.Client, error) {
 
 	tr := &http.Transport{}
 
+	namespace := kClient.Req.Namespace
+	if kClient.KibanaNamespace != "" {
+		namespace = kClient.KibanaNamespace
+	}
+
 	if kClient.KibanaSpec.Certificate != nil {
 		var certificateSecret k8sv1.Secret
-		if err := utils.GetCertificateSecret(kClient.Cli, kClient.Ctx, kClient.Req.Namespace, kClient.KibanaSpec.Certificate, &certificateSecret); err != nil {
+		if err := utils.GetCertificateSecret(kClient.Cli, kClient.Ctx, namespace, kClient.KibanaSpec.Certificate, &certificateSecret); err != nil {
 			return nil, err
 		}
 
