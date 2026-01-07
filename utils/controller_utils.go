@@ -31,7 +31,7 @@ type ErrorEvent struct {
 func GetRequeueResult() ctrl.Result {
 	return ctrl.Result{
 		Requeue:      true,
-		RequeueAfter: time.Duration(time.Duration.Minutes(1)),
+		RequeueAfter: time.Minute,
 	}
 }
 
