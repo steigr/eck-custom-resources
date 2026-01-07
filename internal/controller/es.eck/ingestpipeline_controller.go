@@ -18,12 +18,14 @@ package eseck
 
 import (
 	"context"
+	"eck-custom-resources/utils/template"
 	"fmt"
 
 	configv2 "eck-custom-resources/api/config/v2"
 	"eck-custom-resources/utils"
 	esutils "eck-custom-resources/utils/elasticsearch"
 
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -41,6 +43,7 @@ type IngestPipelineReconciler struct {
 	Scheme        *runtime.Scheme
 	ProjectConfig configv2.ProjectConfigSpec
 	Recorder      record.EventRecorder
+	RestConfig    *rest.Config
 }
 
 //+kubebuilder:rbac:groups=es.eck.github.com,resources=ingestpipelines,verbs=get;list;watch;create;update;patch;delete
@@ -79,8 +82,36 @@ func (r *IngestPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	if ingestPipeline.ObjectMeta.DeletionTimestamp.IsZero() {
+		// Determine the body to use - either rendered from template or original
+		body := ingestPipeline.Spec.Body
+
+		// Check if template references are defined
+		if template.HasTemplateReferences(ingestPipeline.Spec.Template) {
+			// Fetch all referenced ResourceTemplateData objects
+			resourceTemplateDataList, err := template.FetchResourceTemplateData(
+				r.Client,
+				ctx,
+				ingestPipeline.Spec.Template,
+				req.Namespace,
+			)
+			if err != nil {
+				r.Recorder.Event(&ingestPipeline, "Warning", "TemplateFetchError",
+					fmt.Sprintf("Failed to fetch ResourceTemplateData: %s", err.Error()))
+				return utils.GetRequeueResult(), err
+			}
+
+			// Render the body template
+			renderedBody, err := template.RenderBody(body, resourceTemplateDataList, r.RestConfig)
+			if err != nil {
+				r.Recorder.Event(&ingestPipeline, "Warning", "TemplateRenderError",
+					fmt.Sprintf("Failed to render template: %s", err.Error()))
+				return utils.GetRequeueResult(), err
+			}
+			body = renderedBody
+		}
+
 		logger.Info("Creating/Updating Ingest pipeline", "id", req.Name)
-		res, err := esutils.UpsertIngestPipeline(esClient, ingestPipeline)
+		res, err := esutils.UpsertIngestPipeline(esClient, ingestPipeline, body)
 
 		if err == nil {
 			r.Recorder.Event(&ingestPipeline, "Normal", "Created",
