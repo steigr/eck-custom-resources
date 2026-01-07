@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
-	"unicode"
 
 	eseckv1alpha1 "eck-custom-resources/api/es.eck/v1alpha1"
 
@@ -19,44 +17,6 @@ import (
 )
 
 const templateName = "body.tpl"
-
-// toCamelCase converts a string to camelCase with lowercase first character.
-// It handles kebab-case, snake_case, and space-separated words.
-// Examples: "my-resource" -> "myResource", "my_resource" -> "myResource", "MyResource" -> "myResource"
-func toCamelCase(s string) string {
-	if s == "" {
-		return s
-	}
-
-	// Replace common separators with spaces for uniform processing
-	s = strings.ReplaceAll(s, "-", " ")
-	s = strings.ReplaceAll(s, "_", " ")
-
-	words := strings.Fields(s)
-	if len(words) == 0 {
-		return s
-	}
-
-	var result strings.Builder
-	for i, word := range words {
-		if word == "" {
-			continue
-		}
-		if i == 0 {
-			// First word: lowercase entirely
-			result.WriteString(strings.ToLower(word))
-		} else {
-			// Subsequent words: capitalize first letter, lowercase rest
-			runes := []rune(word)
-			result.WriteRune(unicode.ToUpper(runes[0]))
-			if len(runes) > 1 {
-				result.WriteString(strings.ToLower(string(runes[1:])))
-			}
-		}
-	}
-
-	return result.String()
-}
 
 // FetchResourceTemplateData fetches all ResourceTemplateData objects referenced in the template spec.
 // It handles both direct name references and label selector references.
@@ -154,15 +114,15 @@ func RenderBody(body string, resourceTemplateDataList []eseckv1alpha1.ResourceTe
 		}
 
 		// Get or create namespace level map
-		nsKey := toCamelCase(rtd.Namespace)
+		nsKey := rtd.Namespace
 		nsMap, ok := data[nsKey].(map[string]interface{})
 		if !ok {
 			nsMap = make(map[string]interface{})
 			data[nsKey] = nsMap
 		}
 
-		// Add resource data under namespace with camelCase name
-		nsMap[toCamelCase(rtd.Name)] = rtdData
+		// Add resource data under namespace with resource name
+		nsMap[rtd.Name] = rtdData
 	}
 
 	return RenderBodyWithValues(body, data, config)
