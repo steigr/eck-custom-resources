@@ -127,6 +127,7 @@ func (r *ResourceTemplateDataReconciler) triggerDependentResourcesReconcile(ctx 
 	logger.Info("Searching for dependent resources referencing ResourceTemplateData", "name", resourceTemplateData.Name, "namespace", resourceTemplateData.Namespace)
 	// iterate over all registered custom resources in group es.eck.github.com having .spec.template
 	for _, gvk := range utils.GetRegisteredGVKsInGroupWithTemplatingSpec(r.Scheme, "es.eck.github.com") {
+		logger.Info("Looking for dependent resources of type", "GVK", gvk)
 		dependentResources, err := utils.ListResourcesReferencingResourceTemplateData(r.Client, ctx, gvk, resourceTemplateData.Name, resourceTemplateData.Namespace)
 		if err != nil {
 			return err

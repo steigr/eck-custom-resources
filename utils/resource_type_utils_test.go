@@ -253,7 +253,7 @@ func TestReferencesResourceTemplateDataItemsAndHasSameTargetInstance(t *testing.
 			want:                    true,
 		},
 		{
-			name: "matches when no targetInstance in resource and namespace matches resource namespace",
+			name: "matches when no targetInstance in resource but namespace matches",
 			resource: unstructured.Unstructured{
 				Object: map[string]interface{}{
 					"metadata": map[string]interface{}{
