@@ -75,7 +75,7 @@ func (ns *Namespaces) String() string {
 }
 
 func (ns *Namespaces) Set(s string) error {
-	for _, namespace := range strings.Split(",", s) {
+	for _, namespace := range strings.Split(s, ",") {
 		if strings.TrimSpace(namespace) == "" {
 			continue
 		}
