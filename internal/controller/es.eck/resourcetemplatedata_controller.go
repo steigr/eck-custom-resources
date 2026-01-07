@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/davecgh/go-spew/spew"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -121,10 +120,23 @@ func (r *ResourceTemplateDataReconciler) SetupWithManager(mgr ctrl.Manager) erro
 }
 
 // Search for all custom resources which
-// reference the targetInstance ( in targetInstanceNamespace )
-// and trigger reconcile
+// reference the ResourceTemplateData and trigger reconcile
 func (r *ResourceTemplateDataReconciler) triggerDependentResourcesReconcile(ctx context.Context, resourceTemplateData *eseckv1alpha1.ResourceTemplateData, targetInstance *configv2.ElasticsearchSpec, targetInstanceNamespace string) error {
-	spew.Dump(r.Scheme)
-	// iterate over all registered custom resources
+	// iterate over all registered custom resources in group es.eck.github.com having .spec.template
+	for _, gvk := range utils.GetRegisteredGVKsInGroupWithTemplatingSpec(r.Scheme, "es.eck.github.com") {
+		dependentResources, err := utils.ListResourcesReferencingResourceTemplateData(r.Client, ctx, gvk, resourceTemplateData.Name, targetInstanceNamespace)
+		if err != nil {
+			return err
+		}
+
+		for _, dependentResource := range dependentResources {
+			logger := log.FromContext(ctx)
+			logger.Info("Triggering reconcile for dependent resource", "GVK", gvk, "Name", dependentResource.GetName(), "Namespace", dependentResource.GetNamespace())
+			err = r.Client.Update(ctx, &dependentResource)
+			if err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }

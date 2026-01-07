@@ -26,6 +26,9 @@ type IngestPipelineSpec struct {
 	TargetConfig CommonElasticsearchConfig `json:"targetInstance,omitempty"`
 
 	Body string `json:"body"`
+
+	// +optional
+	Template CommonTemplatingSpec `json:"template,omitempty"`
 }
 
 // IngestPipelineStatus defines the observed state of IngestPipeline

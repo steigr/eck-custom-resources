@@ -48,6 +48,24 @@ spec:
                   namespace:
                     type: string
                 type: object
+              template:
+                properties:
+                  references:
+                    items:
+                      properties:
+                        labelSelector:
+                          additionalProperties:
+                            type: string
+                          description: labelSeclector to select ResourceTemplateData
+                            objects
+                          type: object
+                        name:
+                          type: string
+                        namespace:
+                          type: string
+                      type: object
+                    type: array
+                type: object
             required:
             - body
             type: object
