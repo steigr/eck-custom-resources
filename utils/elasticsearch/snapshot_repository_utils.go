@@ -1,9 +1,10 @@
 package elasticsearch
 
 import (
-	"eck-custom-resources/api/es.eck/v1alpha1"
 	"eck-custom-resources/utils"
 	"strings"
+
+	"eck-custom-resources/api/es.eck/v1alpha1"
 
 	"github.com/elastic/go-elasticsearch/v8"
 	ctrl "sigs.k8s.io/controller-runtime"

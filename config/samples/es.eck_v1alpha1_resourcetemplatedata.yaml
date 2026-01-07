@@ -1,0 +1,15 @@
+apiVersion: es.eck.github.com/v1alpha1
+kind: ResourceTemplateData
+metadata:
+  labels:
+    app.kubernetes.io/name: eck-custom-resources
+    app.kubernetes.io/managed-by: kustomize
+  name: resourcetemplatedata-sample
+spec:
+  targetInstance:
+    name: elasticsearch-quickstart
+data:
+  namespacedName: >-
+    ctx?._source?.metadata?.name + "-" + ctx?._source?.metadata?.namespace
+  pipelineFilter: >-
+    ctx?._source?.kind == "Elasticsearch" && ctx?._source?.metadata?.name == "elasticsearch-quickstart"

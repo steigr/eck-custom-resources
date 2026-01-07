@@ -22,6 +22,7 @@ resources:
 - bases/kibana.eck.github.com_kibanainstances.yaml
 - bases/es.eck.github.com_elasticsearchinstances.yaml
 - bases/es.eck.github.com_componenttemplates.yaml
+- bases/es.eck.github.com_resourcetemplatedata.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches:

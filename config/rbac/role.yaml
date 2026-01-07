@@ -27,6 +27,7 @@ rules:
   - indextemplates
   - indices
   - ingestpipelines
+  - resourcetemplatedata
   - snapshotlifecyclepolicies
   - snapshotrepositories
   verbs:
@@ -48,6 +49,7 @@ rules:
   - indextemplates/finalizers
   - indices/finalizers
   - ingestpipelines/finalizers
+  - resourcetemplatedata/finalizers
   - snapshotlifecyclepolicies/finalizers
   - snapshotrepositories/finalizers
   verbs:
@@ -63,6 +65,7 @@ rules:
   - indextemplates/status
   - indices/status
   - ingestpipelines/status
+  - resourcetemplatedata/status
   - snapshotlifecyclepolicies/status
   - snapshotrepositories/status
   verbs:

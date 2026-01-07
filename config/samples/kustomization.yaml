@@ -19,4 +19,5 @@ resources:
 - kibana.eck_v1alpha1_kibanainstance.yaml
 - es.eck_v1alpha1_elasticsearchinstance.yaml
 - es.eck_v1alpha1_componenttemplate.yaml
+- es.eck_v1alpha1_resourcetemplatedata.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples
