@@ -307,7 +307,7 @@ func TestFetchResourceTemplateData(t *testing.T) {
 		wantErr          bool
 	}{
 		{
-			name: "fetch by name in default namespace",
+			name: "fetch by name without namespace searches cluster-wide",
 			templateSpec: eseckv1alpha1.CommonTemplatingSpec{
 				References: []eseckv1alpha1.CommonTemplatingSpecReference{
 					{Name: "rtd-1"},
@@ -329,7 +329,7 @@ func TestFetchResourceTemplateData(t *testing.T) {
 			wantErr:          false,
 		},
 		{
-			name: "fetch by label selector",
+			name: "fetch by label selector without namespace searches cluster-wide",
 			templateSpec: eseckv1alpha1.CommonTemplatingSpec{
 				References: []eseckv1alpha1.CommonTemplatingSpecReference{
 					{LabelSelector: map[string]string{"app": "test"}},
@@ -340,7 +340,18 @@ func TestFetchResourceTemplateData(t *testing.T) {
 			wantErr:          false,
 		},
 		{
-			name: "fetch by label selector - specific label",
+			name: "fetch by label selector with namespace",
+			templateSpec: eseckv1alpha1.CommonTemplatingSpec{
+				References: []eseckv1alpha1.CommonTemplatingSpecReference{
+					{LabelSelector: map[string]string{"app": "test"}, Namespace: "default"},
+				},
+			},
+			defaultNamespace: "other-ns",
+			wantNames:        []string{"rtd-1", "rtd-2"},
+			wantErr:          false,
+		},
+		{
+			name: "fetch by label selector - specific label cluster-wide",
 			templateSpec: eseckv1alpha1.CommonTemplatingSpec{
 				References: []eseckv1alpha1.CommonTemplatingSpecReference{
 					{LabelSelector: map[string]string{"env": "prod"}},
@@ -363,10 +374,21 @@ func TestFetchResourceTemplateData(t *testing.T) {
 			wantErr:          false,
 		},
 		{
-			name: "fetch non-existent resource",
+			name: "fetch non-existent resource without namespace returns empty",
 			templateSpec: eseckv1alpha1.CommonTemplatingSpec{
 				References: []eseckv1alpha1.CommonTemplatingSpecReference{
 					{Name: "non-existent"},
+				},
+			},
+			defaultNamespace: "default",
+			wantNames:        []string{},
+			wantErr:          false,
+		},
+		{
+			name: "fetch non-existent resource with explicit namespace returns error",
+			templateSpec: eseckv1alpha1.CommonTemplatingSpec{
+				References: []eseckv1alpha1.CommonTemplatingSpecReference{
+					{Name: "non-existent", Namespace: "default"},
 				},
 			},
 			defaultNamespace: "default",

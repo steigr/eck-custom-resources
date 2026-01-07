@@ -19,6 +19,7 @@ const templateName = "body.tpl"
 
 // FetchResourceTemplateData fetches all ResourceTemplateData objects referenced in the template spec.
 // It handles both direct name references and label selector references.
+// If namespace is not specified in a reference, it searches cluster-wide.
 func FetchResourceTemplateData(
 	cli client.Client,
 	ctx context.Context,
@@ -29,21 +30,33 @@ func FetchResourceTemplateData(
 	seen := make(map[string]bool) // Track seen resources to avoid duplicates
 
 	for _, ref := range templateSpec.References {
-		namespace := defaultNamespace
-		if ref.Namespace != "" {
-			namespace = ref.Namespace
-		}
-
 		if ref.Name != "" {
-			// Direct name reference
-			var rtd eseckv1alpha1.ResourceTemplateData
-			if err := cli.Get(ctx, client.ObjectKey{Namespace: namespace, Name: ref.Name}, &rtd); err != nil {
-				return nil, fmt.Errorf("failed to get ResourceTemplateData %s/%s: %w", namespace, ref.Name, err)
-			}
-			key := namespace + "/" + rtd.Name
-			if !seen[key] {
-				result = append(result, rtd)
-				seen[key] = true
+			if ref.Namespace != "" {
+				// Direct name reference with explicit namespace
+				var rtd eseckv1alpha1.ResourceTemplateData
+				if err := cli.Get(ctx, client.ObjectKey{Namespace: ref.Namespace, Name: ref.Name}, &rtd); err != nil {
+					return nil, fmt.Errorf("failed to get ResourceTemplateData %s/%s: %w", ref.Namespace, ref.Name, err)
+				}
+				key := rtd.Namespace + "/" + rtd.Name
+				if !seen[key] {
+					result = append(result, rtd)
+					seen[key] = true
+				}
+			} else {
+				// Name reference without namespace - search cluster-wide
+				var rtdList eseckv1alpha1.ResourceTemplateDataList
+				if err := cli.List(ctx, &rtdList); err != nil {
+					return nil, fmt.Errorf("failed to list ResourceTemplateData cluster-wide: %w", err)
+				}
+				for _, rtd := range rtdList.Items {
+					if rtd.Name == ref.Name {
+						key := rtd.Namespace + "/" + rtd.Name
+						if !seen[key] {
+							result = append(result, rtd)
+							seen[key] = true
+						}
+					}
+				}
 			}
 		}
 
@@ -51,11 +64,14 @@ func FetchResourceTemplateData(
 			// Label selector reference
 			var rtdList eseckv1alpha1.ResourceTemplateDataList
 			listOpts := &client.ListOptions{
-				Namespace:     namespace,
 				LabelSelector: labels.SelectorFromSet(ref.LabelSelector),
 			}
+			// Only set namespace if explicitly specified
+			if ref.Namespace != "" {
+				listOpts.Namespace = ref.Namespace
+			}
 			if err := cli.List(ctx, &rtdList, listOpts); err != nil {
-				return nil, fmt.Errorf("failed to list ResourceTemplateData with selector %v in namespace %s: %w", ref.LabelSelector, namespace, err)
+				return nil, fmt.Errorf("failed to list ResourceTemplateData with selector %v: %w", ref.LabelSelector, err)
 			}
 			for _, rtd := range rtdList.Items {
 				key := rtd.Namespace + "/" + rtd.Name
