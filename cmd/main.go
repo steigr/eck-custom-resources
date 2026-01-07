@@ -19,8 +19,10 @@ package main
 import (
 	"crypto/tls"
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -40,9 +42,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	configv2 "eck-custom-resources/api/config/v2"
+	"eck-custom-resources/internal/config"
+
 	eseckv1alpha1 "eck-custom-resources/api/es.eck/v1alpha1"
 	kibanaeckv1alpha1 "eck-custom-resources/api/kibana.eck/v1alpha1"
-	"eck-custom-resources/internal/config"
 	eseckcontroller "eck-custom-resources/internal/controller/es.eck"
 	kibanaeckcontroller "eck-custom-resources/internal/controller/kibana.eck"
 	// +kubebuilder:scaffold:imports
@@ -74,6 +77,7 @@ func main() {
 	var tlsOpts []func(*tls.Config)
 	var configFile string
 	var syncPeriod int
+	var watchNamespacesString string
 	flag.StringVar(&configFile, "config", "",
 		"The controller will load its initial configuration from this file. "+
 			"Omit this flag to use the default configuration values. "+
@@ -94,6 +98,7 @@ func main() {
 		"The directory that contains the metrics server certificate.")
 	flag.StringVar(&metricsCertName, "metrics-cert-name", "tls.crt", "The name of the metrics server certificate file.")
 	flag.StringVar(&metricsCertKey, "metrics-cert-key", "tls.key", "The name of the metrics server key file.")
+	flag.StringVar(&watchNamespacesString, "watch-namespaces", "", "")
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 	opts := zap.Options{
@@ -122,6 +127,37 @@ func main() {
 	ctrlConfig, err := config.LoadProjectConfigSpec(configFile)
 	if err != nil {
 		setupLog.Error(err, "Failed to load ProjectConfigSpec")
+	}
+
+	namespaces := []string{}
+
+	for _, ns := range strings.Split(watchNamespacesString, ",") {
+		trimmed := strings.TrimSpace(ns)
+		if trimmed != "" {
+			namespaces = append(namespaces, trimmed)
+		}
+	}
+
+	if len(namespaces) == 0 {
+		// read namespace from service account
+		nsBytes, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
+		if err != nil {
+			setupLog.Error(err, "unable to read watch namespace from service account")
+			os.Exit(1)
+		}
+		namespace := string(nsBytes)
+		namespaces = append(namespaces, namespace)
+	}
+
+	if len(namespaces) == 1 {
+		setupLog.Info(fmt.Sprintf("Watch namespace: %v", namespaces[0]))
+	} else {
+		setupLog.Info(fmt.Sprintf("Watch namespaces: %v", namespaces))
+	}
+
+	cacheNamespace := map[string]cache.Config{}
+	for _, ns := range namespaces {
+		cacheNamespace[ns] = cache.Config{}
 	}
 
 	// Create watchers for metrics and webhooks certificates
@@ -197,6 +233,7 @@ func main() {
 			config.GetCertificate = metricsCertWatcher.GetCertificate
 		})
 	}
+
 	d := time.Duration(syncPeriod) * time.Hour
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
@@ -206,7 +243,8 @@ func main() {
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "5da2fcc2.github.com",
 		Cache: cache.Options{
-			SyncPeriod: &d, // periodic resync for all watched kinds
+			SyncPeriod:        &d, // periodic resync for all watched kinds
+			DefaultNamespaces: cacheNamespace,
 		},
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
@@ -218,8 +256,10 @@ func main() {
 		// the manager stops, so would be fine to enable this option. However,
 		// if you are doing or is intended to do any operation such as perform cleanups
 		// after the manager stops then its usage might be unsafe.
+
 		// LeaderElectionReleaseOnCancel: true,
 	})
+
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
@@ -409,4 +449,13 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+}
+
+func fatal(err error, debug bool) {
+	if debug {
+		setupLog.Error(nil, fmt.Sprintf("%+v", err))
+	} else {
+		setupLog.Error(nil, fmt.Sprintf("%s", err))
+	}
+	os.Exit(1)
 }
