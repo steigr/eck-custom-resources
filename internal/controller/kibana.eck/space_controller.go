@@ -66,13 +66,18 @@ func (r *SpaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		logger.Info("Kibana reconciler disabled, not reconciling.", "Resource", req.NamespacedName)
 		return ctrl.Result{}, nil
 	}
+	targetInstanceNamespace := req.Namespace
+	if space.Spec.TargetConfig.KibanaInstanceNamespace != "" {
+		targetInstanceNamespace = space.Spec.TargetConfig.KibanaInstanceNamespace
+	}
 
 	// Get the ElasticsearchInstance defined in target (if present and pass to the kibanaUtils.Client)
 	kibanaClient := kibanaUtils.Client{
-		Cli:        r.Client,
-		Ctx:        ctx,
-		KibanaSpec: *targetInstance,
-		Req:        req,
+		Cli:             r.Client,
+		Ctx:             ctx,
+		KibanaSpec:      *targetInstance,
+		KibanaNamespace: targetInstanceNamespace,
+		Req:             req,
 	}
 
 	if space.ObjectMeta.DeletionTimestamp.IsZero() {

@@ -17,10 +17,11 @@ import (
 )
 
 type Client struct {
-	Cli        client.Client
-	Ctx        context.Context
-	KibanaSpec configv2.KibanaSpec
-	Req        ctrl.Request
+	Cli             client.Client
+	Ctx             context.Context
+	KibanaSpec      configv2.KibanaSpec
+	KibanaNamespace string
+	Req             ctrl.Request
 }
 
 func (kClient Client) DoGet(path string) (*http.Response, error) {
@@ -89,8 +90,12 @@ func (kClient Client) getHttpClient() (*http.Client, error) {
 
 func (kClient Client) doRequest(httpRequest *http.Request) (*http.Response, error) {
 	if kClient.KibanaSpec.Authentication != nil && kClient.KibanaSpec.Authentication.UsernamePassword != nil {
+		namespace := kClient.Req.Namespace
+		if kClient.KibanaNamespace != "" {
+			namespace = kClient.KibanaNamespace
+		}
 		var userSecret k8sv1.Secret
-		if err := utils.GetUserSecret(kClient.Cli, kClient.Ctx, kClient.Req.Namespace, kClient.KibanaSpec.Authentication.UsernamePassword, &userSecret); err != nil {
+		if err := utils.GetUserSecret(kClient.Cli, kClient.Ctx, namespace, kClient.KibanaSpec.Authentication.UsernamePassword, &userSecret); err != nil {
 			return nil, err
 		}
 		httpRequest.SetBasicAuth(kClient.KibanaSpec.Authentication.UsernamePassword.UserName, string(userSecret.Data[kClient.KibanaSpec.Authentication.UsernamePassword.UserName]))

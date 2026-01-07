@@ -64,7 +64,12 @@ func (r *ComponentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, nil
 	}
 
-	esClient, createClientErr := esutils.GetElasticsearchClient(r.Client, ctx, *targetInstance, req)
+	targetInstanceNamespace := req.Namespace
+	if comTem.Spec.TargetConfig.ElasticsearchInstanceNamespace != "" {
+		targetInstanceNamespace = comTem.Spec.TargetConfig.ElasticsearchInstanceNamespace
+	}
+
+	esClient, createClientErr := esutils.GetElasticsearchClient(r.Client, ctx, *targetInstance, req, targetInstanceNamespace)
 	if createClientErr != nil {
 		logger.Error(createClientErr, "Failed to create Elasticsearch client")
 		return utils.GetRequeueResult(), client.IgnoreNotFound(createClientErr)

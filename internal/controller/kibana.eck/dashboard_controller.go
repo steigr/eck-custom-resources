@@ -67,11 +67,17 @@ func (r *DashboardReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, nil
 	}
 
+	targetInstanceNamespace := req.Namespace
+	if dashboard.Spec.TargetConfig.KibanaInstanceNamespace != "" {
+		targetInstanceNamespace = dashboard.Spec.TargetConfig.KibanaInstanceNamespace
+	}
+
 	kibanaClient := kibanaUtils.Client{
-		Cli:        r.Client,
-		Ctx:        ctx,
-		KibanaSpec: *targetInstance,
-		Req:        req,
+		Cli:             r.Client,
+		Ctx:             ctx,
+		KibanaSpec:      *targetInstance,
+		KibanaNamespace: targetInstanceNamespace,
+		Req:             req,
 	}
 
 	if dashboard.ObjectMeta.DeletionTimestamp.IsZero() {

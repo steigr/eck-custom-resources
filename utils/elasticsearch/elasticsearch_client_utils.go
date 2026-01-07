@@ -24,7 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func GetElasticsearchClient(cli client.Client, ctx context.Context, esSpec configv2.ElasticsearchSpec, req ctrl.Request) (*elasticsearch.Client, error) {
+func GetElasticsearchClient(cli client.Client, ctx context.Context, esSpec configv2.ElasticsearchSpec, req ctrl.Request, targetInstanceNamespace string) (*elasticsearch.Client, error) {
 	logger := log.FromContext(ctx)
 
 	logger.Info("Elasticsearch client not initialized, initializing.", "Spec", esSpec)
@@ -37,7 +37,7 @@ func GetElasticsearchClient(cli client.Client, ctx context.Context, esSpec confi
 
 	if esSpec.Authentication != nil && esSpec.Authentication.UsernamePassword != nil {
 		var userSecret k8sv1.Secret
-		if err := utils.GetUserSecret(cli, ctx, req.Namespace, esSpec.Authentication.UsernamePassword, &userSecret); err != nil {
+		if err := utils.GetUserSecret(cli, ctx, targetInstanceNamespace, esSpec.Authentication.UsernamePassword, &userSecret); err != nil {
 			return nil, err
 		}
 		config.Username = esSpec.Authentication.UsernamePassword.UserName
@@ -50,7 +50,7 @@ func GetElasticsearchClient(cli client.Client, ctx context.Context, esSpec confi
 
 	if esSpec.Certificate != nil {
 		var certificateSecret k8sv1.Secret
-		if err := utils.GetCertificateSecret(cli, ctx, req.Namespace, esSpec.Certificate, &certificateSecret); err != nil {
+		if err := utils.GetCertificateSecret(cli, ctx, targetInstanceNamespace, esSpec.Certificate, &certificateSecret); err != nil {
 			return nil, err
 		}
 		config.CACert = certificateSecret.Data[esSpec.Certificate.CertificateKey]

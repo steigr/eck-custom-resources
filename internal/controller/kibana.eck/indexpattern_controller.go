@@ -68,12 +68,18 @@ func (r *IndexPatternReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, nil
 	}
 
+	targetInstanceNamespace := req.Namespace
+	if indexPattern.Spec.TargetConfig.KibanaInstanceNamespace != "" {
+		targetInstanceNamespace = indexPattern.Spec.TargetConfig.KibanaInstanceNamespace
+	}
+
 	// Get the ElasticsearchInstance defined in target (if present and pass to the kibanaUtils.Client)
 	kibanaClient := kibanaUtils.Client{
-		Cli:        r.Client,
-		Ctx:        ctx,
-		KibanaSpec: *targetInstance,
-		Req:        req,
+		Cli:             r.Client,
+		Ctx:             ctx,
+		KibanaSpec:      *targetInstance,
+		KibanaNamespace: targetInstanceNamespace,
+		Req:             req,
 	}
 
 	if indexPattern.ObjectMeta.DeletionTimestamp.IsZero() {
