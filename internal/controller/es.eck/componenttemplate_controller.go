@@ -28,9 +28,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	configv2 "eck-custom-resources/api/config/v2"
-	eseckv1alpha1 "eck-custom-resources/api/es.eck/v1alpha1"
 	"eck-custom-resources/utils"
 	esutils "eck-custom-resources/utils/elasticsearch"
+
+	eseckv1alpha1 "eck-custom-resources/api/es.eck/v1alpha1"
 )
 
 // ComponentTemplateReconciler reconciles a ComponentTemplate object
@@ -54,7 +55,7 @@ func (r *ComponentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	if err := r.Get(ctx, req.NamespacedName, &comTem); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	targetInstance, err := r.getTargetInstance(&comTem, comTem.Spec.TargetConfig, ctx, req.Namespace)
+	targetInstance, err := esutils.GetElasticsearchTargetInstance(r.Client, ctx, r.Recorder, &comTem, r.ProjectConfig.Elasticsearch, comTem.Spec.TargetConfig, req.Namespace)
 	if err != nil {
 		return utils.GetRequeueResult(), err
 	}
@@ -98,20 +99,6 @@ func (r *ComponentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	}
 
 	return ctrl.Result{}, nil
-}
-
-func (r *ComponentTemplateReconciler) getTargetInstance(object runtime.Object, TargetConfig eseckv1alpha1.CommonElasticsearchConfig, ctx context.Context, namespace string) (*configv2.ElasticsearchSpec, error) {
-	targetInstance := r.ProjectConfig.Elasticsearch
-	if TargetConfig.ElasticsearchInstance != "" {
-		var resourceInstance eseckv1alpha1.ElasticsearchInstance
-		if err := esutils.GetTargetElasticsearchInstance(r.Client, ctx, namespace, TargetConfig.ElasticsearchInstance, &resourceInstance); err != nil {
-			r.Recorder.Event(object, "Warning", "Failed to load target instance", fmt.Sprintf("Target instance not found: %s", err.Error()))
-			return nil, err
-		}
-
-		targetInstance = resourceInstance.Spec
-	}
-	return &targetInstance, nil
 }
 
 func (r *ComponentTemplateReconciler) addFinalizer(o client.Object, finalizer string, ctx context.Context) error {

@@ -7,8 +7,12 @@ import (
 	"strings"
 
 	configv2 "eck-custom-resources/api/config/v2"
+
 	"eck-custom-resources/api/es.eck/v1alpha1"
 	eseckv1alpha1 "eck-custom-resources/api/es.eck/v1alpha1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
+
 	"eck-custom-resources/utils"
 
 	"github.com/elastic/elastic-transport-go/v8/elastictransport"
@@ -121,4 +125,31 @@ func GetTargetElasticsearchInstance(cli client.Client, ctx context.Context, name
 		return err
 	}
 	return nil
+}
+
+// GetElasticsearchTargetInstance resolves the target Elasticsearch instance from either the project config
+// or a named ElasticsearchInstance resource. It returns the ElasticsearchSpec to use for API calls.
+func GetElasticsearchTargetInstance(
+	cli client.Client,
+	ctx context.Context,
+	recorder record.EventRecorder,
+	object runtime.Object,
+	defaultElasticsearch configv2.ElasticsearchSpec,
+	targetConfig eseckv1alpha1.CommonElasticsearchConfig,
+	namespace string,
+) (*configv2.ElasticsearchSpec, error) {
+	targetInstance := defaultElasticsearch
+	if targetConfig.ElasticsearchInstance != "" {
+		if targetConfig.ElasticsearchInstanceNamespace != "" {
+			namespace = targetConfig.ElasticsearchInstanceNamespace
+		}
+		var resourceInstance eseckv1alpha1.ElasticsearchInstance
+		if err := GetTargetElasticsearchInstance(cli, ctx, namespace, targetConfig.ElasticsearchInstance, &resourceInstance); err != nil {
+			recorder.Event(object, "Warning", "Failed to load target instance", fmt.Sprintf("Target instance not found: %s", err.Error()))
+			return nil, err
+		}
+
+		targetInstance = resourceInstance.Spec
+	}
+	return &targetInstance, nil
 }

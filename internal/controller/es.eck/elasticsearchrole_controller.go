@@ -57,7 +57,7 @@ func (r *ElasticsearchRoleReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	targetInstance, err := r.getTargetInstance(&role, role.Spec.TargetConfig, ctx, req.Namespace)
+	targetInstance, err := esutils.GetElasticsearchTargetInstance(r.Client, ctx, r.Recorder, &role, r.ProjectConfig.Elasticsearch, role.Spec.TargetConfig, req.Namespace)
 	if err != nil {
 		return utils.GetRequeueResult(), err
 	}
@@ -108,20 +108,6 @@ func (r *ElasticsearchRoleReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 		return ctrl.Result{}, nil
 	}
-}
-
-func (r *ElasticsearchRoleReconciler) getTargetInstance(object runtime.Object, TargetConfig eseckv1alpha1.CommonElasticsearchConfig, ctx context.Context, namespace string) (*configv2.ElasticsearchSpec, error) {
-	targetInstance := r.ProjectConfig.Elasticsearch
-	if TargetConfig.ElasticsearchInstance != "" {
-		var resourceInstance eseckv1alpha1.ElasticsearchInstance
-		if err := esutils.GetTargetElasticsearchInstance(r.Client, ctx, namespace, TargetConfig.ElasticsearchInstance, &resourceInstance); err != nil {
-			r.Recorder.Event(object, "Warning", "Failed to load target instance", fmt.Sprintf("Target instance not found: %s", err.Error()))
-			return nil, err
-		}
-
-		targetInstance = resourceInstance.Spec
-	}
-	return &targetInstance, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

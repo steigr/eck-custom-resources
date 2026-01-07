@@ -21,9 +21,10 @@ import (
 	"fmt"
 
 	configv2 "eck-custom-resources/api/config/v2"
-	eseckv1alpha1 "eck-custom-resources/api/es.eck/v1alpha1"
 	"eck-custom-resources/utils"
 	esutils "eck-custom-resources/utils/elasticsearch"
+
+	eseckv1alpha1 "eck-custom-resources/api/es.eck/v1alpha1"
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -57,7 +58,7 @@ func (r *IndexReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	targetInstance, err := r.getTargetInstance(&index, index.Spec.TargetConfig, ctx, req.Namespace)
+	targetInstance, err := esutils.GetElasticsearchTargetInstance(r.Client, ctx, r.Recorder, &index, r.ProjectConfig.Elasticsearch, index.Spec.TargetConfig, req.Namespace)
 	if err != nil {
 		return utils.GetRequeueResult(), err
 	}
@@ -156,18 +157,4 @@ func (r *IndexReconciler) addFinalizer(o client.Object, finalizer string, ctx co
 		}
 	}
 	return nil
-}
-
-func (r *IndexReconciler) getTargetInstance(object runtime.Object, TargetConfig eseckv1alpha1.CommonElasticsearchConfig, ctx context.Context, namespace string) (*configv2.ElasticsearchSpec, error) {
-	targetInstance := r.ProjectConfig.Elasticsearch
-	if TargetConfig.ElasticsearchInstance != "" {
-		var resourceInstance eseckv1alpha1.ElasticsearchInstance
-		if err := esutils.GetTargetElasticsearchInstance(r.Client, ctx, namespace, TargetConfig.ElasticsearchInstance, &resourceInstance); err != nil {
-			r.Recorder.Event(object, "Warning", "Failed to load target instance", fmt.Sprintf("Target instance not found: %s", err.Error()))
-			return nil, err
-		}
-
-		targetInstance = resourceInstance.Spec
-	}
-	return &targetInstance, nil
 }

@@ -65,7 +65,7 @@ func (r *ElasticsearchApikeyReconciler) Reconcile(ctx context.Context, req ctrl.
 	// Convenience locals
 	desiredGen := apikey.GetGeneration()
 
-	targetInstance, err := r.getTargetInstance(&apikey, apikey.Spec.TargetConfig, ctx, req.Namespace)
+	targetInstance, err := esutils.GetElasticsearchTargetInstance(r.Client, ctx, r.Recorder, &apikey, r.ProjectConfig.Elasticsearch, apikey.Spec.TargetConfig, req.Namespace)
 	if err != nil {
 		return utils.GetRequeueResult(), err
 	}
@@ -316,20 +316,6 @@ func (r *ElasticsearchApikeyReconciler) Reconcile(ctx context.Context, req ctrl.
 
 		return ctrl.Result{}, nil
 	}
-}
-
-func (r *ElasticsearchApikeyReconciler) getTargetInstance(object runtime.Object, TargetConfig eseckv1alpha1.CommonElasticsearchConfig, ctx context.Context, namespace string) (*configv2.ElasticsearchSpec, error) {
-	targetInstance := r.ProjectConfig.Elasticsearch
-	if TargetConfig.ElasticsearchInstance != "" {
-		var resourceInstance eseckv1alpha1.ElasticsearchInstance
-		if err := esutils.GetTargetElasticsearchInstance(r.Client, ctx, namespace, TargetConfig.ElasticsearchInstance, &resourceInstance); err != nil {
-			r.Recorder.Event(object, "Warning", "Failed to load target instance", fmt.Sprintf("Target instance not found: %s", err.Error()))
-			return nil, err
-		}
-
-		targetInstance = resourceInstance.Spec
-	}
-	return &targetInstance, nil
 }
 
 func apikeySetCondition(obj *eseckv1alpha1.ElasticsearchApikey, c metav1.Condition) {
