@@ -8,6 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // GetRegisteredGVKsInGroupWithTemplatingSpec returns all GroupVersionKinds registered in the scheme
@@ -73,6 +74,7 @@ func ListResourcesReferencingResourceTemplateData(
 	resourceTemplateDataName string,
 	resourceTemplateDataNamespace string,
 ) ([]unstructured.Unstructured, error) {
+	logger := log.FromContext(ctx)
 	var result []unstructured.Unstructured
 
 	// Create an unstructured list for the given GVK
@@ -89,7 +91,9 @@ func ListResourcesReferencingResourceTemplateData(
 	}
 
 	for _, item := range list.Items {
+		logger.Info("Checking resource for ResourceTemplateData reference", "GVK", gvk, "Name", item.GetName(), "Namespace", item.GetNamespace())
 		if referencesResourceTemplateDataItemsAndHasSameTargetInstance(item, resourceTemplateDataName, resourceTemplateDataNamespace) {
+			logger.Info("Resource references ResourceTemplateData and has matching targetInstance", "GVK", gvk, "Name", item.GetName(), "Namespace", item.GetNamespace())
 			result = append(result, item)
 		}
 	}
@@ -101,6 +105,8 @@ func ListResourcesReferencingResourceTemplateData(
 // the spec.template.references field present and matches the specified targetInstance name and namespace (if given).
 func referencesResourceTemplateDataItemsAndHasSameTargetInstance(resource unstructured.Unstructured, targetInstanceName string, targetInstanceNamespace string) bool {
 	// Get spec
+	logger := log.FromContext(context.TODO())
+	logger.Info("Checking if resource has spec.template.references and matching targetInstance", "Resource", resource.GetName(), "Namespace", resource.GetNamespace())
 	spec, found, err := unstructured.NestedMap(resource.Object, "spec")
 	if err != nil || !found {
 		return false
@@ -108,12 +114,14 @@ func referencesResourceTemplateDataItemsAndHasSameTargetInstance(resource unstru
 
 	// Check the resource's targetInstance matches the given targetInstance name and namespace
 	if targetInstance, found, _ := unstructured.NestedMap(spec, "targetInstance"); found {
+		logger.Info("Found spec.targetInstance in resource", "Resource", resource.GetName(), "Namespace", resource.GetNamespace())
 		// Check targetInstance name if provided
 		if targetInstanceName != "" {
 			name, _, _ := unstructured.NestedString(targetInstance, "name")
 			if name != targetInstanceName {
 				return false
 			}
+			logger.Info("Matched targetInstance name", "Resource", resource.GetName(), "Namespace", resource.GetNamespace())
 		}
 		// Check targetInstance namespace if provided
 		if targetInstanceNamespace != "" {
@@ -123,9 +131,7 @@ func referencesResourceTemplateDataItemsAndHasSameTargetInstance(resource unstru
 			if namespace != "" && namespace != targetInstanceNamespace {
 				return false
 			}
-			if namespace == "" && resource.GetNamespace() != targetInstanceNamespace {
-				return false
-			}
+			logger.Info("Matched targetInstance namespace", "Resource", resource.GetName(), "Namespace", resource.GetNamespace())
 		}
 	} else {
 		// No targetInstance specified in resource - use resource's namespace for comparison
@@ -139,11 +145,13 @@ func referencesResourceTemplateDataItemsAndHasSameTargetInstance(resource unstru
 	if err != nil || !found {
 		return false
 	}
+	logger.Info("Found spec.template in resource", "Resource", resource.GetName(), "Namespace", resource.GetNamespace())
 
 	references, found, err := unstructured.NestedSlice(template, "references")
 	if err != nil || !found || len(references) == 0 {
 		return false
 	}
+	logger.Info("Found spec.template.references in resource", "Resource", resource.GetName(), "Namespace", resource.GetNamespace())
 
 	return true
 }
