@@ -105,7 +105,6 @@ func UpdateExpirationApikey(cli client.Client, ctx context.Context, esClient *el
 		esClient.Security.UpdateAPIKey.WithBody(bytes.NewReader(expirationBody)),
 		esClient.Security.UpdateAPIKey.WithContext(ctx),
 	)
-	
 
 	if err != nil {
 		return utils.GetRequeueResult(), fmt.Errorf("update API key %q Expiration call failed: %w", apikey.ID, err)
