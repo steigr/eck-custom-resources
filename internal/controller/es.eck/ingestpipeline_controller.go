@@ -100,7 +100,6 @@ func (r *IngestPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 					fmt.Sprintf("Failed to fetch ResourceTemplateData: %s", err.Error()))
 				return utils.GetRequeueResult(), err
 			}
-
 			// Render the body template
 			renderedBody, err := template.RenderBody(body, resourceTemplateDataList, r.RestConfig)
 			if err != nil {
