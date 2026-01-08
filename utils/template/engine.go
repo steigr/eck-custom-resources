@@ -2,6 +2,7 @@ package template
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	eseckv1alpha1 "eck-custom-resources/api/es.eck/v1alpha1"
@@ -94,19 +95,34 @@ func HasTemplateReferences(templateSpec eseckv1alpha1.CommonTemplatingSpec) bool
 // RenderBody renders the given body template using data from ResourceTemplateData objects.
 // It uses the Helm template engine for rendering.
 // The data from all ResourceTemplateData objects is merged into a single map,
-// where each ResourceTemplateData's data is accessible via its name.
+// where each ResourceTemplateData's data is accessible via .Values.<namespace>.<name>.<key>
 func RenderBody(body string, resourceTemplateDataList []eseckv1alpha1.ResourceTemplateData, config *rest.Config) (string, error) {
 	// Build the template data map
-	// Structure: { "resourceName": { "key1": "value1", "key2": "value2" }, ... }
+	// Structure: { "namespace": { "resourceName": { "key1": value1, "key2": value2 }, ... }, ... }
 	data := make(map[string]interface{})
 
 	for _, rtd := range resourceTemplateDataList {
-		// Convert map[string]string to map[string]interface{} for template compatibility
+		// Convert map[string]apiextensionsv1.JSON to map[string]interface{} for template compatibility
 		rtdData := make(map[string]interface{})
-		for k, v := range rtd.Data {
-			rtdData[k] = v
+		for k, v := range rtd.Spec.Values {
+			// Unmarshal the JSON value to interface{}
+			var value interface{}
+			if err := json.Unmarshal(v.Raw, &value); err != nil {
+				return "", fmt.Errorf("failed to unmarshal value %q from ResourceTemplateData %s/%s: %w", k, rtd.Namespace, rtd.Name, err)
+			}
+			rtdData[k] = value
 		}
-		data[rtd.Name] = rtdData
+
+		// Get or create namespace level map
+		nsKey := rtd.Namespace
+		nsMap, ok := data[nsKey].(map[string]interface{})
+		if !ok {
+			nsMap = make(map[string]interface{})
+			data[nsKey] = nsMap
+		}
+
+		// Add resource data under namespace with resource name
+		nsMap[rtd.Name] = rtdData
 	}
 
 	return RenderBodyWithValues(body, data, config)

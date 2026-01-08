@@ -191,16 +191,16 @@ func TestGetRegisteredGVKsInGroupWithTemplatingSpec(t *testing.T) {
 	}
 }
 
-func TestReferencesResourceTemplateData(t *testing.T) {
+func TestIsTemplateAndHasSameTargetInstance(t *testing.T) {
 	tests := []struct {
-		name                          string
-		resource                      unstructured.Unstructured
-		resourceTemplateDataName      string
-		resourceTemplateDataNamespace string
-		want                          bool
+		name                    string
+		resource                unstructured.Unstructured
+		targetInstanceName      string
+		targetInstanceNamespace string
+		want                    bool
 	}{
 		{
-			name: "matches by name with explicit namespace",
+			name: "matches when resource has template and matching targetInstance",
 			resource: unstructured.Unstructured{
 				Object: map[string]interface{}{
 					"metadata": map[string]interface{}{
@@ -208,23 +208,52 @@ func TestReferencesResourceTemplateData(t *testing.T) {
 						"namespace": "default",
 					},
 					"spec": map[string]interface{}{
+						"targetInstance": map[string]interface{}{
+							"name":      "my-elasticsearch",
+							"namespace": "es-namespace",
+						},
 						"template": map[string]interface{}{
 							"references": []interface{}{
 								map[string]interface{}{
-									"name":      "my-template-data",
-									"namespace": "template-ns",
+									"name": "my-template-data",
 								},
 							},
 						},
 					},
 				},
 			},
-			resourceTemplateDataName:      "my-template-data",
-			resourceTemplateDataNamespace: "template-ns",
-			want:                          true,
+			targetInstanceName:      "my-elasticsearch",
+			targetInstanceNamespace: "es-namespace",
+			want:                    true,
 		},
 		{
-			name: "matches by name with implicit namespace (uses resource namespace)",
+			name: "matches when resource has template and targetInstance namespace not set (uses resource namespace)",
+			resource: unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"name":      "test-resource",
+						"namespace": "default",
+					},
+					"spec": map[string]interface{}{
+						"targetInstance": map[string]interface{}{
+							"name": "my-elasticsearch",
+						},
+						"template": map[string]interface{}{
+							"references": []interface{}{
+								map[string]interface{}{
+									"name": "my-template-data",
+								},
+							},
+						},
+					},
+				},
+			},
+			targetInstanceName:      "my-elasticsearch",
+			targetInstanceNamespace: "default",
+			want:                    true,
+		},
+		{
+			name: "matches when no targetInstance in resource but namespace matches",
 			resource: unstructured.Unstructured{
 				Object: map[string]interface{}{
 					"metadata": map[string]interface{}{
@@ -242,12 +271,12 @@ func TestReferencesResourceTemplateData(t *testing.T) {
 					},
 				},
 			},
-			resourceTemplateDataName:      "my-template-data",
-			resourceTemplateDataNamespace: "default",
-			want:                          true,
+			targetInstanceName:      "",
+			targetInstanceNamespace: "default",
+			want:                    true,
 		},
 		{
-			name: "does not match - different name",
+			name: "does not match when targetInstance name differs",
 			resource: unstructured.Unstructured{
 				Object: map[string]interface{}{
 					"metadata": map[string]interface{}{
@@ -255,23 +284,26 @@ func TestReferencesResourceTemplateData(t *testing.T) {
 						"namespace": "default",
 					},
 					"spec": map[string]interface{}{
+						"targetInstance": map[string]interface{}{
+							"name":      "other-elasticsearch",
+							"namespace": "es-namespace",
+						},
 						"template": map[string]interface{}{
 							"references": []interface{}{
 								map[string]interface{}{
-									"name":      "other-template-data",
-									"namespace": "default",
+									"name": "my-template-data",
 								},
 							},
 						},
 					},
 				},
 			},
-			resourceTemplateDataName:      "my-template-data",
-			resourceTemplateDataNamespace: "default",
-			want:                          false,
+			targetInstanceName:      "my-elasticsearch",
+			targetInstanceNamespace: "es-namespace",
+			want:                    false,
 		},
 		{
-			name: "does not match - different namespace",
+			name: "does not match when targetInstance namespace differs",
 			resource: unstructured.Unstructured{
 				Object: map[string]interface{}{
 					"metadata": map[string]interface{}{
@@ -279,52 +311,46 @@ func TestReferencesResourceTemplateData(t *testing.T) {
 						"namespace": "default",
 					},
 					"spec": map[string]interface{}{
+						"targetInstance": map[string]interface{}{
+							"name":      "my-elasticsearch",
+							"namespace": "other-namespace",
+						},
 						"template": map[string]interface{}{
 							"references": []interface{}{
 								map[string]interface{}{
-									"name":      "my-template-data",
-									"namespace": "other-ns",
+									"name": "my-template-data",
 								},
 							},
 						},
 					},
 				},
 			},
-			resourceTemplateDataName:      "my-template-data",
-			resourceTemplateDataNamespace: "default",
-			want:                          false,
+			targetInstanceName:      "my-elasticsearch",
+			targetInstanceNamespace: "es-namespace",
+			want:                    false,
 		},
 		{
-			name: "matches one of multiple references",
+			name: "does not match when no targetInstance and resource namespace differs",
 			resource: unstructured.Unstructured{
 				Object: map[string]interface{}{
 					"metadata": map[string]interface{}{
 						"name":      "test-resource",
-						"namespace": "default",
+						"namespace": "other-namespace",
 					},
 					"spec": map[string]interface{}{
 						"template": map[string]interface{}{
 							"references": []interface{}{
 								map[string]interface{}{
-									"name":      "first-template",
-									"namespace": "default",
-								},
-								map[string]interface{}{
-									"name":      "my-template-data",
-									"namespace": "default",
-								},
-								map[string]interface{}{
-									"name":      "third-template",
-									"namespace": "default",
+									"name": "my-template-data",
 								},
 							},
 						},
 					},
 				},
 			},
-			resourceTemplateDataName:      "my-template-data",
-			resourceTemplateDataNamespace: "default",
-			want:                          true,
+			targetInstanceName:      "",
+			targetInstanceNamespace: "default",
+			want:                    false,
 		},
 		{
 			name: "no spec field",
@@ -336,9 +362,9 @@ func TestReferencesResourceTemplateData(t *testing.T) {
 					},
 				},
 			},
-			resourceTemplateDataName:      "my-template-data",
-			resourceTemplateDataNamespace: "default",
-			want:                          false,
+			targetInstanceName:      "",
+			targetInstanceNamespace: "default",
+			want:                    false,
 		},
 		{
 			name: "no template field",
@@ -353,12 +379,12 @@ func TestReferencesResourceTemplateData(t *testing.T) {
 					},
 				},
 			},
-			resourceTemplateDataName:      "my-template-data",
-			resourceTemplateDataNamespace: "default",
-			want:                          false,
+			targetInstanceName:      "",
+			targetInstanceNamespace: "default",
+			want:                    false,
 		},
 		{
-			name: "no references field",
+			name: "matches with empty template - only checks template existence",
 			resource: unstructured.Unstructured{
 				Object: map[string]interface{}{
 					"metadata": map[string]interface{}{
@@ -370,12 +396,12 @@ func TestReferencesResourceTemplateData(t *testing.T) {
 					},
 				},
 			},
-			resourceTemplateDataName:      "my-template-data",
-			resourceTemplateDataNamespace: "default",
-			want:                          false,
+			targetInstanceName:      "",
+			targetInstanceNamespace: "default",
+			want:                    true,
 		},
 		{
-			name: "empty references",
+			name: "matches with empty references - only checks template existence",
 			resource: unstructured.Unstructured{
 				Object: map[string]interface{}{
 					"metadata": map[string]interface{}{
@@ -389,17 +415,71 @@ func TestReferencesResourceTemplateData(t *testing.T) {
 					},
 				},
 			},
-			resourceTemplateDataName:      "my-template-data",
-			resourceTemplateDataNamespace: "default",
-			want:                          false,
+			targetInstanceName:      "",
+			targetInstanceNamespace: "default",
+			want:                    true,
+		},
+		{
+			name: "matches with empty targetInstanceName parameter",
+			resource: unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"name":      "test-resource",
+						"namespace": "default",
+					},
+					"spec": map[string]interface{}{
+						"targetInstance": map[string]interface{}{
+							"name":      "any-elasticsearch",
+							"namespace": "default",
+						},
+						"template": map[string]interface{}{
+							"references": []interface{}{
+								map[string]interface{}{
+									"name": "my-template-data",
+								},
+							},
+						},
+					},
+				},
+			},
+			targetInstanceName:      "",
+			targetInstanceNamespace: "default",
+			want:                    true,
+		},
+		{
+			name: "matches with empty targetInstanceNamespace parameter",
+			resource: unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"name":      "test-resource",
+						"namespace": "default",
+					},
+					"spec": map[string]interface{}{
+						"targetInstance": map[string]interface{}{
+							"name":      "my-elasticsearch",
+							"namespace": "any-namespace",
+						},
+						"template": map[string]interface{}{
+							"references": []interface{}{
+								map[string]interface{}{
+									"name": "my-template-data",
+								},
+							},
+						},
+					},
+				},
+			},
+			targetInstanceName:      "my-elasticsearch",
+			targetInstanceNamespace: "",
+			want:                    true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := referencesResourceTemplateData(tt.resource, tt.resourceTemplateDataName, tt.resourceTemplateDataNamespace)
+			got := isTemplateAndHasSameTargetInstance(tt.resource, tt.targetInstanceName, tt.targetInstanceNamespace)
 			if got != tt.want {
-				t.Errorf("referencesResourceTemplateData() = %v, want %v", got, tt.want)
+				t.Errorf("isTemplateAndHasSameTargetInstance() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -408,7 +488,7 @@ func TestReferencesResourceTemplateData(t *testing.T) {
 func TestListResourcesReferencingResourceTemplateData(t *testing.T) {
 	scheme := runtime.NewScheme()
 
-	// Create test resources
+	// Create test resources with targetInstance configurations
 	resource1 := &unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": "test.group/v1",
@@ -418,11 +498,14 @@ func TestListResourcesReferencingResourceTemplateData(t *testing.T) {
 				"namespace": "default",
 			},
 			"spec": map[string]interface{}{
+				"targetInstance": map[string]interface{}{
+					"name":      "my-elasticsearch",
+					"namespace": "es-namespace",
+				},
 				"template": map[string]interface{}{
 					"references": []interface{}{
 						map[string]interface{}{
-							"name":      "my-template-data",
-							"namespace": "default",
+							"name": "my-template-data",
 						},
 					},
 				},
@@ -439,11 +522,14 @@ func TestListResourcesReferencingResourceTemplateData(t *testing.T) {
 				"namespace": "default",
 			},
 			"spec": map[string]interface{}{
+				"targetInstance": map[string]interface{}{
+					"name":      "other-elasticsearch",
+					"namespace": "es-namespace",
+				},
 				"template": map[string]interface{}{
 					"references": []interface{}{
 						map[string]interface{}{
-							"name":      "other-template-data",
-							"namespace": "default",
+							"name": "other-template-data",
 						},
 					},
 				},
@@ -460,11 +546,11 @@ func TestListResourcesReferencingResourceTemplateData(t *testing.T) {
 				"namespace": "other-ns",
 			},
 			"spec": map[string]interface{}{
+				// No targetInstance - uses resource namespace
 				"template": map[string]interface{}{
 					"references": []interface{}{
 						map[string]interface{}{
 							"name": "my-template-data",
-							// No namespace specified, should use resource namespace
 						},
 					},
 				},
@@ -487,48 +573,60 @@ func TestListResourcesReferencingResourceTemplateData(t *testing.T) {
 	}
 
 	tests := []struct {
-		name                          string
-		gvk                           schema.GroupVersionKind
-		resourceTemplateDataName      string
-		resourceTemplateDataNamespace string
-		wantNames                     []string
-		wantErr                       bool
+		name                    string
+		gvk                     schema.GroupVersionKind
+		targetInstanceName      string
+		targetInstanceNamespace string
+		wantNames               []string
+		wantErr                 bool
 	}{
 		{
-			name: "find resources referencing template data in default namespace",
+			name: "find resources with matching targetInstance",
 			gvk: schema.GroupVersionKind{
 				Group:   "test.group",
 				Version: "v1",
 				Kind:    "TestResource",
 			},
-			resourceTemplateDataName:      "my-template-data",
-			resourceTemplateDataNamespace: "default",
-			wantNames:                     []string{"resource-1"},
-			wantErr:                       false,
+			targetInstanceName:      "my-elasticsearch",
+			targetInstanceNamespace: "es-namespace",
+			wantNames:               []string{"resource-1"},
+			wantErr:                 false,
 		},
 		{
-			name: "find resources referencing template data in other-ns namespace",
+			name: "find resources without targetInstance matching resource namespace",
 			gvk: schema.GroupVersionKind{
 				Group:   "test.group",
 				Version: "v1",
 				Kind:    "TestResource",
 			},
-			resourceTemplateDataName:      "my-template-data",
-			resourceTemplateDataNamespace: "other-ns",
-			wantNames:                     []string{"resource-3"},
-			wantErr:                       false,
+			targetInstanceName:      "",
+			targetInstanceNamespace: "other-ns",
+			wantNames:               []string{"resource-3"},
+			wantErr:                 false,
 		},
 		{
-			name: "no resources match",
+			name: "no resources match - wrong targetInstance name",
 			gvk: schema.GroupVersionKind{
 				Group:   "test.group",
 				Version: "v1",
 				Kind:    "TestResource",
 			},
-			resourceTemplateDataName:      "nonexistent-template",
-			resourceTemplateDataNamespace: "default",
-			wantNames:                     []string{},
-			wantErr:                       false,
+			targetInstanceName:      "nonexistent-elasticsearch",
+			targetInstanceNamespace: "es-namespace",
+			wantNames:               []string{},
+			wantErr:                 false,
+		},
+		{
+			name: "no resources match - wrong targetInstance namespace",
+			gvk: schema.GroupVersionKind{
+				Group:   "test.group",
+				Version: "v1",
+				Kind:    "TestResource",
+			},
+			targetInstanceName:      "my-elasticsearch",
+			targetInstanceNamespace: "wrong-namespace",
+			wantNames:               []string{},
+			wantErr:                 false,
 		},
 	}
 
@@ -544,8 +642,8 @@ func TestListResourcesReferencingResourceTemplateData(t *testing.T) {
 				fakeClient,
 				context.Background(),
 				tt.gvk,
-				tt.resourceTemplateDataName,
-				tt.resourceTemplateDataNamespace,
+				tt.targetInstanceName,
+				tt.targetInstanceNamespace,
 			)
 
 			if (err != nil) != tt.wantErr {

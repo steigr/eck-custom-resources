@@ -19,6 +19,7 @@ package eseck
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
@@ -74,9 +75,10 @@ func (r *ResourceTemplateDataReconciler) Reconcile(ctx context.Context, req ctrl
 	logger.Info("Using target instance namespace", "namespace", targetInstanceNamespace)
 
 	if resourceTemplateData.ObjectMeta.DeletionTimestamp.IsZero() {
-		if err := r.triggerDependentResourcesReconcile(ctx, &resourceTemplateData, targetInstance, targetInstanceNamespace); err != nil {
+		if err := r.triggerDependentResourcesReconcile(ctx, &resourceTemplateData, resourceTemplateData.Spec.TargetConfig.ElasticsearchInstance, targetInstanceNamespace); err != nil {
 			return ctrl.Result{}, err
 		}
+
 		r.Recorder.Event(&resourceTemplateData, "Normal", "Created",
 			fmt.Sprintf("Created/Updated %s/%s %s", resourceTemplateData.APIVersion, resourceTemplateData.Kind, resourceTemplateData.Name))
 
@@ -87,7 +89,7 @@ func (r *ResourceTemplateDataReconciler) Reconcile(ctx context.Context, req ctrl
 		// The object is being deleted
 		if controllerutil.ContainsFinalizer(&resourceTemplateData, finalizer) {
 			logger.Info("Deleting object", "resourceTemplateData", resourceTemplateData.Name)
-			if err := r.triggerDependentResourcesReconcile(ctx, &resourceTemplateData, targetInstance, targetInstanceNamespace); err != nil {
+			if err := r.triggerDependentResourcesReconcile(ctx, &resourceTemplateData, resourceTemplateData.Spec.TargetConfig.ElasticsearchInstance, targetInstanceNamespace); err != nil {
 				return ctrl.Result{}, err
 			}
 
@@ -121,17 +123,28 @@ func (r *ResourceTemplateDataReconciler) SetupWithManager(mgr ctrl.Manager) erro
 
 // Search for all custom resources which
 // reference the ResourceTemplateData and trigger reconcile
-func (r *ResourceTemplateDataReconciler) triggerDependentResourcesReconcile(ctx context.Context, resourceTemplateData *eseckv1alpha1.ResourceTemplateData, targetInstance *configv2.ElasticsearchSpec, targetInstanceNamespace string) error {
+func (r *ResourceTemplateDataReconciler) triggerDependentResourcesReconcile(ctx context.Context, resourceTemplateData *eseckv1alpha1.ResourceTemplateData, targetInstanceName string, targetInstanceNamespace string) error {
+	logger := log.FromContext(ctx)
+	logger.V(6).Info("Searching for dependent resources referencing target instance", "name", targetInstanceName, "namespace", targetInstanceNamespace)
 	// iterate over all registered custom resources in group es.eck.github.com having .spec.template
 	for _, gvk := range utils.GetRegisteredGVKsInGroupWithTemplatingSpec(r.Scheme, "es.eck.github.com") {
-		dependentResources, err := utils.ListResourcesReferencingResourceTemplateData(r.Client, ctx, gvk, resourceTemplateData.Name, targetInstanceNamespace)
+		logger.V(6).Info("Looking for dependent resources of type", "GVK", gvk)
+		dependentResources, err := utils.ListResourcesReferencingResourceTemplateData(r.Client, ctx, gvk, targetInstanceName, targetInstanceNamespace)
 		if err != nil {
 			return err
 		}
 
 		for _, dependentResource := range dependentResources {
-			logger := log.FromContext(ctx)
-			logger.Info("Triggering reconcile for dependent resource", "GVK", gvk, "Name", dependentResource.GetName(), "Namespace", dependentResource.GetNamespace())
+			logger.V(6).Info("Triggering reconcile for dependent resource", "GVK", gvk, "Name", dependentResource.GetName(), "Namespace", dependentResource.GetNamespace())
+
+			// Add/Update annotation with current unix timestamp in milliseconds
+			annotations := dependentResource.GetAnnotations()
+			if annotations == nil {
+				annotations = make(map[string]string)
+			}
+			annotations[utils.LastUpdateTriggeredAtAnnotation] = fmt.Sprintf("%d", time.Now().UnixMilli())
+			dependentResource.SetAnnotations(annotations)
+
 			err = r.Client.Update(ctx, &dependentResource)
 			if err != nil {
 				return err

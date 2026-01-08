@@ -27,11 +27,6 @@ spec:
               may reject unrecognized values.
               More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
-          data:
-            additionalProperties:
-              type: string
-            description: data provides key-value pairs to be used
-            type: object
           kind:
             description: |-
               Kind is a string value representing the REST resource this object represents.
@@ -52,6 +47,15 @@ spec:
                   namespace:
                     type: string
                 type: object
+              values:
+                additionalProperties:
+                  x-kubernetes-preserve-unknown-fields: true
+                description: Values provides a nested map of values to be used by
+                  templates
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+            required:
+            - values
             type: object
           status:
             description: status defines the observed state of ResourceTemplateData
@@ -117,7 +121,6 @@ spec:
                 type: integer
             type: object
         required:
-        - data
         - spec
         type: object
     served: true

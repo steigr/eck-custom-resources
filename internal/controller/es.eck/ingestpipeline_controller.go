@@ -52,7 +52,6 @@ type IngestPipelineReconciler struct {
 
 func (r *IngestPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
-
 	finalizer := "ingestpipelines.es.eck.github.com/finalizer"
 
 	var ingestPipeline eseckv1alpha1.IngestPipeline
@@ -82,11 +81,13 @@ func (r *IngestPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	if ingestPipeline.ObjectMeta.DeletionTimestamp.IsZero() {
+		logger.Info("Creating/Updating object", "ingestPipeline", ingestPipeline.Name)
 		// Determine the body to use - either rendered from template or original
 		body := ingestPipeline.Spec.Body
 
 		// Check if template references are defined
 		if template.HasTemplateReferences(ingestPipeline.Spec.Template) {
+			logger.V(6).Info("Template references found, rendering template")
 			// Fetch all referenced ResourceTemplateData objects
 			resourceTemplateDataList, err := template.FetchResourceTemplateData(
 				r.Client,
@@ -107,6 +108,7 @@ func (r *IngestPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 					fmt.Sprintf("Failed to render template: %s", err.Error()))
 				return utils.GetRequeueResult(), err
 			}
+			logger.V(6).Info("Template rendered successfully: ", "body", renderedBody)
 			body = renderedBody
 		}
 

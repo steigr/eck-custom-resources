@@ -31,7 +31,7 @@ type ErrorEvent struct {
 func GetRequeueResult() ctrl.Result {
 	return ctrl.Result{
 		Requeue:      true,
-		RequeueAfter: time.Duration(time.Duration.Minutes(1)),
+		RequeueAfter: time.Minute,
 	}
 }
 
@@ -77,10 +77,27 @@ func GetCertificateSecret(cli client.Client, ctx context.Context, namespace stri
 	return nil
 }
 
+const LastUpdateTriggeredAtAnnotation = "eck.github.com/last-update-triggered-at"
+
 func CommonEventFilter() predicate.Funcs {
 	return predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			return e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration()
+			// Allow if generation changed (spec changed)
+			if e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration() {
+				return true
+			}
+			// Allow if the last-update-triggered-at annotation changed
+			oldAnnotations := e.ObjectOld.GetAnnotations()
+			newAnnotations := e.ObjectNew.GetAnnotations()
+			oldValue := ""
+			newValue := ""
+			if oldAnnotations != nil {
+				oldValue = oldAnnotations[LastUpdateTriggeredAtAnnotation]
+			}
+			if newAnnotations != nil {
+				newValue = newAnnotations[LastUpdateTriggeredAtAnnotation]
+			}
+			return oldValue != newValue
 		},
 	}
 }

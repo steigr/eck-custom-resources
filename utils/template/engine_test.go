@@ -2,14 +2,22 @@ package template
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	eseckv1alpha1 "eck-custom-resources/api/es.eck/v1alpha1"
 
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
+
+// jsonValue is a helper function to create apiextensionsv1.JSON from any value
+func jsonValue(v interface{}) apiextensionsv1.JSON {
+	data, _ := json.Marshal(v)
+	return apiextensionsv1.JSON{Raw: data}
+}
 
 func TestHasTemplateReferences(t *testing.T) {
 	tests := []struct {
@@ -87,11 +95,15 @@ func TestRenderBody(t *testing.T) {
 	}{
 		{
 			name: "simple variable substitution",
-			body: `{"name": "{{ .Values.mydata.name }}"}`,
+			body: `{"name": "{{ .Values.default.mydata.name }}"}`,
 			resourceTemplateDataList: []eseckv1alpha1.ResourceTemplateData{
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "mydata"},
-					Data:       map[string]string{"name": "test-value"},
+					ObjectMeta: metav1.ObjectMeta{Name: "mydata", Namespace: "default"},
+					Spec: eseckv1alpha1.ResourceTemplateDataSpec{
+						Values: map[string]apiextensionsv1.JSON{
+							"name": jsonValue("test-value"),
+						},
+					},
 				},
 			},
 			want:    `{"name": "test-value"}`,
@@ -99,30 +111,67 @@ func TestRenderBody(t *testing.T) {
 		},
 		{
 			name: "multiple variables from same resource",
-			body: `{"name": "{{ .Values.config.name }}", "value": "{{ .Values.config.value }}"}`,
+			body: `{"name": "{{ .Values.default.config.name }}", "value": "{{ .Values.default.config.value }}"}`,
 			resourceTemplateDataList: []eseckv1alpha1.ResourceTemplateData{
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "config"},
-					Data:       map[string]string{"name": "my-name", "value": "my-value"},
+					ObjectMeta: metav1.ObjectMeta{Name: "config", Namespace: "default"},
+					Spec: eseckv1alpha1.ResourceTemplateDataSpec{
+						Values: map[string]apiextensionsv1.JSON{
+							"name":  jsonValue("my-name"),
+							"value": jsonValue("my-value"),
+						},
+					},
 				},
 			},
 			want:    `{"name": "my-name", "value": "my-value"}`,
 			wantErr: false,
 		},
 		{
-			name: "variables from multiple resources",
-			body: `{"db": "{{ .Values.database.host }}", "cache": "{{ .Values.cache.host }}"}`,
+			name: "variables from multiple resources in same namespace",
+			body: `{"db": "{{ .Values.default.database.host }}", "cache": "{{ .Values.default.cache.host }}"}`,
 			resourceTemplateDataList: []eseckv1alpha1.ResourceTemplateData{
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "database"},
-					Data:       map[string]string{"host": "db.example.com"},
+					ObjectMeta: metav1.ObjectMeta{Name: "database", Namespace: "default"},
+					Spec: eseckv1alpha1.ResourceTemplateDataSpec{
+						Values: map[string]apiextensionsv1.JSON{
+							"host": jsonValue("db.example.com"),
+						},
+					},
 				},
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "cache"},
-					Data:       map[string]string{"host": "cache.example.com"},
+					ObjectMeta: metav1.ObjectMeta{Name: "cache", Namespace: "default"},
+					Spec: eseckv1alpha1.ResourceTemplateDataSpec{
+						Values: map[string]apiextensionsv1.JSON{
+							"host": jsonValue("cache.example.com"),
+						},
+					},
 				},
 			},
 			want:    `{"db": "db.example.com", "cache": "cache.example.com"}`,
+			wantErr: false,
+		},
+		{
+			name: "variables from multiple namespaces",
+			body: `{"db": "{{ .Values.production.database.host }}", "cache": "{{ .Values.staging.cache.host }}"}`,
+			resourceTemplateDataList: []eseckv1alpha1.ResourceTemplateData{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "database", Namespace: "production"},
+					Spec: eseckv1alpha1.ResourceTemplateDataSpec{
+						Values: map[string]apiextensionsv1.JSON{
+							"host": jsonValue("db.prod.example.com"),
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "cache", Namespace: "staging"},
+					Spec: eseckv1alpha1.ResourceTemplateDataSpec{
+						Values: map[string]apiextensionsv1.JSON{
+							"host": jsonValue("cache.staging.example.com"),
+						},
+					},
+				},
+			},
+			want:    `{"db": "db.prod.example.com", "cache": "cache.staging.example.com"}`,
 			wantErr: false,
 		},
 		{
@@ -134,11 +183,15 @@ func TestRenderBody(t *testing.T) {
 		},
 		{
 			name: "using sprig functions - default",
-			body: `{"value": "{{ default "fallback" .Values.mydata.missing }}"}`,
+			body: `{"value": "{{ default "fallback" .Values.default.mydata.missing }}"}`,
 			resourceTemplateDataList: []eseckv1alpha1.ResourceTemplateData{
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "mydata"},
-					Data:       map[string]string{"other": "data"},
+					ObjectMeta: metav1.ObjectMeta{Name: "mydata", Namespace: "default"},
+					Spec: eseckv1alpha1.ResourceTemplateDataSpec{
+						Values: map[string]apiextensionsv1.JSON{
+							"other": jsonValue("data"),
+						},
+					},
 				},
 			},
 			want:    `{"value": "fallback"}`,
@@ -146,11 +199,15 @@ func TestRenderBody(t *testing.T) {
 		},
 		{
 			name: "using sprig functions - upper",
-			body: `{"value": "{{ .Values.mydata.name | upper }}"}`,
+			body: `{"value": "{{ .Values.default.mydata.name | upper }}"}`,
 			resourceTemplateDataList: []eseckv1alpha1.ResourceTemplateData{
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "mydata"},
-					Data:       map[string]string{"name": "hello"},
+					ObjectMeta: metav1.ObjectMeta{Name: "mydata", Namespace: "default"},
+					Spec: eseckv1alpha1.ResourceTemplateDataSpec{
+						Values: map[string]apiextensionsv1.JSON{
+							"name": jsonValue("hello"),
+						},
+					},
 				},
 			},
 			want:    `{"value": "HELLO"}`,
@@ -158,11 +215,15 @@ func TestRenderBody(t *testing.T) {
 		},
 		{
 			name: "using sprig functions - quote",
-			body: `{"value": {{ .Values.mydata.name | quote }}}`,
+			body: `{"value": {{ .Values.default.mydata.name | quote }}}`,
 			resourceTemplateDataList: []eseckv1alpha1.ResourceTemplateData{
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "mydata"},
-					Data:       map[string]string{"name": "test"},
+					ObjectMeta: metav1.ObjectMeta{Name: "mydata", Namespace: "default"},
+					Spec: eseckv1alpha1.ResourceTemplateDataSpec{
+						Values: map[string]apiextensionsv1.JSON{
+							"name": jsonValue("test"),
+						},
+					},
 				},
 			},
 			want:    `{"value": "test"}`,
@@ -170,11 +231,15 @@ func TestRenderBody(t *testing.T) {
 		},
 		{
 			name: "conditional template",
-			body: `{{- if .Values.config.enabled }}{"enabled": true}{{- else }}{"enabled": false}{{- end }}`,
+			body: `{{- if .Values.default.config.enabled }}{"enabled": true}{{- else }}{"enabled": false}{{- end }}`,
 			resourceTemplateDataList: []eseckv1alpha1.ResourceTemplateData{
 				{
-					ObjectMeta: metav1.ObjectMeta{Name: "config"},
-					Data:       map[string]string{"enabled": "true"},
+					ObjectMeta: metav1.ObjectMeta{Name: "config", Namespace: "default"},
+					Spec: eseckv1alpha1.ResourceTemplateDataSpec{
+						Values: map[string]apiextensionsv1.JSON{
+							"enabled": jsonValue(true),
+						},
+					},
 				},
 			},
 			want:    `{"enabled": true}`,
@@ -186,6 +251,75 @@ func TestRenderBody(t *testing.T) {
 			resourceTemplateDataList: []eseckv1alpha1.ResourceTemplateData{},
 			want:                     "",
 			wantErr:                  true,
+		},
+		{
+			name: "nested values",
+			body: `{"nested": "{{ .Values.default.mydata.nested.deep.value }}"}`,
+			resourceTemplateDataList: []eseckv1alpha1.ResourceTemplateData{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "mydata", Namespace: "default"},
+					Spec: eseckv1alpha1.ResourceTemplateDataSpec{
+						Values: map[string]apiextensionsv1.JSON{
+							"nested": jsonValue(map[string]interface{}{
+								"deep": map[string]interface{}{
+									"value": "deeply-nested",
+								},
+							}),
+						},
+					},
+				},
+			},
+			want:    `{"nested": "deeply-nested"}`,
+			wantErr: false,
+		},
+		{
+			name: "array values",
+			body: `{{- range .Values.default.mydata.items }}{{ . }}{{- end }}`,
+			resourceTemplateDataList: []eseckv1alpha1.ResourceTemplateData{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "mydata", Namespace: "default"},
+					Spec: eseckv1alpha1.ResourceTemplateDataSpec{
+						Values: map[string]apiextensionsv1.JSON{
+							"items": jsonValue([]string{"a", "b", "c"}),
+						},
+					},
+				},
+			},
+			want:    `abc`,
+			wantErr: false,
+		},
+		{
+			name: "numeric values",
+			body: `{"port": {{ .Values.default.mydata.port }}, "replicas": {{ .Values.default.mydata.replicas }}}`,
+			resourceTemplateDataList: []eseckv1alpha1.ResourceTemplateData{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "mydata", Namespace: "default"},
+					Spec: eseckv1alpha1.ResourceTemplateDataSpec{
+						Values: map[string]apiextensionsv1.JSON{
+							"port":     jsonValue(8080),
+							"replicas": jsonValue(3),
+						},
+					},
+				},
+			},
+			want:    `{"port": 8080, "replicas": 3}`,
+			wantErr: false,
+		},
+		{
+			name: "kebab-case namespace and name used as-is",
+			body: `{"value": "{{ index .Values "my-namespace" "my-resource" "key" }}"}`,
+			resourceTemplateDataList: []eseckv1alpha1.ResourceTemplateData{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: "my-resource", Namespace: "my-namespace"},
+					Spec: eseckv1alpha1.ResourceTemplateDataSpec{
+						Values: map[string]apiextensionsv1.JSON{
+							"key": jsonValue("original-keys"),
+						},
+					},
+				},
+			},
+			want:    `{"value": "original-keys"}`,
+			wantErr: false,
 		},
 	}
 
@@ -280,7 +414,11 @@ func TestFetchResourceTemplateData(t *testing.T) {
 			Namespace: "default",
 			Labels:    map[string]string{"app": "test", "env": "prod"},
 		},
-		Data: map[string]string{"key1": "value1"},
+		Spec: eseckv1alpha1.ResourceTemplateDataSpec{
+			Values: map[string]apiextensionsv1.JSON{
+				"key1": jsonValue("value1"),
+			},
+		},
 	}
 	rtd2 := &eseckv1alpha1.ResourceTemplateData{
 		ObjectMeta: metav1.ObjectMeta{
@@ -288,7 +426,11 @@ func TestFetchResourceTemplateData(t *testing.T) {
 			Namespace: "default",
 			Labels:    map[string]string{"app": "test", "env": "dev"},
 		},
-		Data: map[string]string{"key2": "value2"},
+		Spec: eseckv1alpha1.ResourceTemplateDataSpec{
+			Values: map[string]apiextensionsv1.JSON{
+				"key2": jsonValue("value2"),
+			},
+		},
 	}
 	rtd3 := &eseckv1alpha1.ResourceTemplateData{
 		ObjectMeta: metav1.ObjectMeta{
@@ -296,7 +438,11 @@ func TestFetchResourceTemplateData(t *testing.T) {
 			Namespace: "other-ns",
 			Labels:    map[string]string{"app": "other"},
 		},
-		Data: map[string]string{"key3": "value3"},
+		Spec: eseckv1alpha1.ResourceTemplateDataSpec{
+			Values: map[string]apiextensionsv1.JSON{
+				"key3": jsonValue("value3"),
+			},
+		},
 	}
 
 	tests := []struct {
