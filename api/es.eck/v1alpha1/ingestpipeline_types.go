@@ -29,6 +29,10 @@ type IngestPipelineSpec struct {
 
 	// +optional
 	Template CommonTemplatingSpec `json:"template,omitempty"`
+
+	// UpdatePolicy defines how updates should be handled.
+	// +optional
+	UpdatePolicy UpdatePolicySpec `json:"updatePolicy,omitempty"`
 }
 
 // IngestPipelineStatus defines the observed state of IngestPipeline
@@ -39,6 +43,21 @@ type IngestPipelineStatus struct {
 	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
+
+// Condition types for IngestPipeline
+const (
+	// IngestPipelineConditionTypeInitialDeployment indicates whether the initial deployment succeeded
+	IngestPipelineConditionTypeInitialDeployment = "InitialDeployment"
+	// IngestPipelineConditionTypeLastUpdate indicates the status of the most recent update
+	IngestPipelineConditionTypeLastUpdate = "LastUpdate"
+)
+
+// Condition reasons for IngestPipeline
+const (
+	IngestPipelineReasonPending   = "Pending"
+	IngestPipelineReasonSucceeded = "Succeeded"
+	IngestPipelineReasonFailed    = "Failed"
+)
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status

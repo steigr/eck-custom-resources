@@ -66,6 +66,18 @@ spec:
                       type: object
                     type: array
                 type: object
+              updatePolicy:
+                description: UpdatePolicy defines how updates should be handled.
+                properties:
+                  updateMode:
+                    default: Overwrite
+                    description: UpdateMode defines how updates should be handled.
+                      Defaults to Overwrite.
+                    enum:
+                    - Overwrite
+                    - Block
+                    type: string
+                type: object
             required:
             - body
             type: object
