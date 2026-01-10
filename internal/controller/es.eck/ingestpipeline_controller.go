@@ -83,32 +83,18 @@ func (r *IngestPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	if ingestPipeline.ObjectMeta.DeletionTimestamp.IsZero() {
 		logger.Info("Creating/Updating object", "ingestPipeline", ingestPipeline.Name)
 		// Determine the body to use - either rendered from template or original
-		body := ingestPipeline.Spec.Body
-
-		// Check if template references are defined
-		if template.HasTemplateReferences(ingestPipeline.Spec.Template) {
-			logger.V(6).Info("Template references found, rendering template")
-			// Fetch all referenced ResourceTemplateData objects
-			resourceTemplateDataList, err := template.FetchResourceTemplateData(
-				r.Client,
-				ctx,
-				ingestPipeline.Spec.Template,
-				req.Namespace,
-			)
-			if err != nil {
-				r.Recorder.Event(&ingestPipeline, "Warning", "TemplateFetchError",
-					fmt.Sprintf("Failed to fetch ResourceTemplateData: %s", err.Error()))
-				return utils.GetRequeueResult(), err
-			}
-			// Render the body template
-			renderedBody, err := template.RenderBody(body, resourceTemplateDataList, r.RestConfig)
-			if err != nil {
-				r.Recorder.Event(&ingestPipeline, "Warning", "TemplateRenderError",
-					fmt.Sprintf("Failed to render template: %s", err.Error()))
-				return utils.GetRequeueResult(), err
-			}
-			logger.V(6).Info("Template rendered successfully: ", "body", renderedBody)
-			body = renderedBody
+		body, err := template.FetchAndRenderTemplate(
+			r.Client,
+			ctx,
+			ingestPipeline.Spec.Template,
+			ingestPipeline.Spec.Body,
+			req.Namespace,
+			r.RestConfig,
+		)
+		if err != nil {
+			r.Recorder.Event(&ingestPipeline, "Warning", "TemplateRenderError",
+				fmt.Sprintf("Failed to render template: %s", err.Error()))
+			return utils.GetRequeueResult(), err
 		}
 
 		logger.Info("Creating/Updating Ingest pipeline", "id", req.Name)
