@@ -81,7 +81,7 @@ func (r *DataViewReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		Req:             req,
 	}
 
-	if dataView.ObjectMeta.DeletionTimestamp.IsZero() {
+	if dataView.DeletionTimestamp.IsZero() {
 		if err := kibanaUtils.DependenciesFulfilled(kibanaClient, dataView.Spec.GetSavedObject()); err != nil {
 			r.Recorder.Event(&dataView, "Warning", "Missing dependencies",
 				fmt.Sprintf("Some of declared dependencies are not present yet: %s", err.Error()))

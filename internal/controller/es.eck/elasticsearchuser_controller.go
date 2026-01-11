@@ -87,7 +87,7 @@ func (r *ElasticsearchUserReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return utils.GetRequeueResult(), client.IgnoreNotFound(createClientErr)
 	}
 
-	if user.ObjectMeta.DeletionTimestamp.IsZero() {
+	if user.DeletionTimestamp.IsZero() {
 		if condition := apimeta.FindStatusCondition(user.Status.Conditions, "Ready"); condition != nil {
 			if condition.Status == metav1.ConditionTrue {
 				var msg string

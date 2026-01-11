@@ -83,6 +83,13 @@ var _ = BeforeSuite(func() {
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
+	err = (&IngestPipelineReconciler{
+		Client:     k8sManager.GetClient(),
+		Scheme:     k8sManager.GetScheme(),
+		RestConfig: cfg,
+	}).SetupWithManager(k8sManager)
+	Expect(err).ToNot(HaveOccurred())
+
 	go func() {
 		err = k8sManager.Start(ctrl.SetupSignalHandler())
 		Expect(err).ToNot(HaveOccurred())
@@ -95,6 +102,7 @@ var _ = BeforeSuite(func() {
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")
 	gexec.KillAndWait(5 * time.Second)
-	err := testEnv.Stop()
-	Expect(err).ToNot(HaveOccurred())
+	if testEnv != nil {
+		_ = testEnv.Stop() // Ignore error as it may timeout
+	}
 })

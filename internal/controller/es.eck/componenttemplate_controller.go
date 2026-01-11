@@ -74,7 +74,7 @@ func (r *ComponentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		logger.Error(createClientErr, "Failed to create Elasticsearch client")
 		return utils.GetRequeueResult(), client.IgnoreNotFound(createClientErr)
 	}
-	if comTem.ObjectMeta.DeletionTimestamp.IsZero() {
+	if comTem.DeletionTimestamp.IsZero() {
 		logger.Info("Creating/Updating component template", "componentTemplate", req.Name)
 		res, err := esutils.UpsertComponentTemplate(esClient, comTem)
 		if err == nil {

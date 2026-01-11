@@ -82,7 +82,7 @@ func (r *VisualizationReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		Req:             req,
 	}
 
-	if visualization.ObjectMeta.DeletionTimestamp.IsZero() {
+	if visualization.DeletionTimestamp.IsZero() {
 		if err := kibanaUtils.DependenciesFulfilled(kibanaClient, visualization.Spec.GetSavedObject()); err != nil {
 			r.Recorder.Event(&visualization, "Warning", "Missing dependencies",
 				fmt.Sprintf("Some of declared dependencies are not present yet: %s", err.Error()))

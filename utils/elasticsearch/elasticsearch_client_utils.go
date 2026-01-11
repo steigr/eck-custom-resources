@@ -10,6 +10,7 @@ import (
 
 	"eck-custom-resources/api/es.eck/v1alpha1"
 	eseckv1alpha1 "eck-custom-resources/api/es.eck/v1alpha1"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 

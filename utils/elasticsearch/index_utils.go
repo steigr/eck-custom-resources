@@ -125,7 +125,7 @@ func UpdateIndex(esClient *elasticsearch.Client, index v1alpha1.Index, eventReco
 	if settingsErr != nil || settingsRes.IsError() {
 		return utils.GetRequeueResult(), GetClientErrorOrResponseError(settingsErr, settingsRes)
 	}
-	eventRecorder.Event(&index, "Normal", "Index settings updated", fmt.Sprintf("Index settings successfuly updated for %s", index.Name))
+	eventRecorder.Event(&index, "Normal", "Index settings updated", fmt.Sprintf("Index settings successfully updated for %s", index.Name))
 
 	marshalledMapping, err := json.Marshal(updatedBody["mappings"])
 	if err != nil {
@@ -138,7 +138,7 @@ func UpdateIndex(esClient *elasticsearch.Client, index v1alpha1.Index, eventReco
 	if mappingErr != nil || mappingRes.IsError() {
 		return utils.GetRequeueResult(), GetClientErrorOrResponseError(mappingErr, mappingRes)
 	}
-	eventRecorder.Event(&index, "Normal", "Index mapping updated", fmt.Sprintf("Index mapping successfuly updated for %s", index.Name))
+	eventRecorder.Event(&index, "Normal", "Index mapping updated", fmt.Sprintf("Index mapping successfully updated for %s", index.Name))
 
 	return ctrl.Result{}, nil
 }

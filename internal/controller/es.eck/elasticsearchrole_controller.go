@@ -78,7 +78,7 @@ func (r *ElasticsearchRoleReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return utils.GetRequeueResult(), client.IgnoreNotFound(createClientErr)
 	}
 
-	if role.ObjectMeta.DeletionTimestamp.IsZero() {
+	if role.DeletionTimestamp.IsZero() {
 		logger.Info("Creating/Updating Role", "role", req.Name)
 		res, err := esutils.UpsertRole(esClient, role)
 

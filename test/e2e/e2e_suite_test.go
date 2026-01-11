@@ -40,6 +40,9 @@ var (
 	// projectImage is the name of the image which will be build and loaded
 	// with the code source changes to be tested.
 	projectImage = "example.com/eck-custom-resources:v0.0.1"
+
+	// runE2ETests controls whether E2E tests should run. Set RUN_E2E_TESTS=true to enable.
+	runE2ETests = os.Getenv("RUN_E2E_TESTS") == "true"
 )
 
 // TestE2E runs the end-to-end (e2e) test suite for the project. These tests execute in an isolated,
@@ -53,6 +56,10 @@ func TestE2E(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
+	if !runE2ETests {
+		Skip("E2E tests are skipped by default. Set RUN_E2E_TESTS=true to run them.")
+	}
+
 	By("building the manager(Operator) image")
 	cmd := exec.Command("make", "docker-build", fmt.Sprintf("IMG=%s", projectImage))
 	_, err := utils.Run(cmd)

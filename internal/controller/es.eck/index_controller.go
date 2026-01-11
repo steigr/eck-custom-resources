@@ -79,7 +79,7 @@ func (r *IndexReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return utils.GetRequeueResult(), client.IgnoreNotFound(createClientErr)
 	}
 
-	if index.ObjectMeta.DeletionTimestamp.IsZero() {
+	if index.DeletionTimestamp.IsZero() {
 		res, err := r.createUpdate(ctx, req, esClient, index)
 
 		if err := r.addFinalizer(&index, finalizer, ctx); err != nil {

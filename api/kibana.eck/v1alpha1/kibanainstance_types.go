@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	configv2 "eck-custom-resources/api/config/v2"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

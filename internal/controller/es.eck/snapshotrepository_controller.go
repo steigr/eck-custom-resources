@@ -78,7 +78,7 @@ func (r *SnapshotRepositoryReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return utils.GetRequeueResult(), client.IgnoreNotFound(createClientErr)
 	}
 
-	if snapshotRepository.ObjectMeta.DeletionTimestamp.IsZero() {
+	if snapshotRepository.DeletionTimestamp.IsZero() {
 		logger.Info("Creating/Updating Snapshot repository", "snapshot repository", req.Name)
 		res, err := esutils.UpsertSnapshotRepository(esClient, snapshotRepository)
 

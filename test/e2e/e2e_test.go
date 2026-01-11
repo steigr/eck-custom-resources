@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -259,14 +260,87 @@ var _ = Describe("Manager", Ordered, func() {
 
 		// +kubebuilder:scaffold:e2e-webhooks-checks
 
-		// TODO: Customize the e2e test suite with scenarios specific to your project.
-		// Consider applying sample/CR(s) and check their status and/or verifying
-		// the reconciliation by using the metrics, i.e.:
-		// metricsOutput := getMetricsOutput()
-		// Expect(metricsOutput).To(ContainSubstring(
-		//    fmt.Sprintf(`controller_runtime_reconcile_total{controller="%s",result="success"} 1`,
-		//    strings.ToLower(<Kind>),
-		// ))
+		// CRD Tests - IngestPipeline
+		It("should create and manage IngestPipeline resources", func() {
+			By("creating an IngestPipeline")
+			ingestPipelineYAML := `
+apiVersion: es.eck.github.com/v1alpha1
+kind: IngestPipeline
+metadata:
+  name: e2e-test-pipeline
+  namespace: eck-custom-resources-system
+spec:
+  body: |
+    {
+      "description": "E2E test pipeline",
+      "processors": [
+        {
+          "set": {
+            "field": "test_field",
+            "value": "test_value"
+          }
+        }
+      ]
+    }
+`
+			cmd := exec.Command("kubectl", "apply", "-f", "-")
+			cmd.Stdin = strings.NewReader(ingestPipelineYAML)
+			output, err := utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred(), "Failed to create IngestPipeline: %s", output)
+
+			By("verifying the IngestPipeline was created")
+			verifyPipelineCreated := func(g Gomega) {
+				cmd := exec.Command("kubectl", "get", "ingestpipeline", "e2e-test-pipeline",
+					"-n", namespace, "-o", "jsonpath={.metadata.name}")
+				output, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(output).To(Equal("e2e-test-pipeline"))
+			}
+			Eventually(verifyPipelineCreated, 30*time.Second, time.Second).Should(Succeed())
+
+			By("cleaning up the IngestPipeline")
+			cmd = exec.Command("kubectl", "delete", "ingestpipeline", "e2e-test-pipeline",
+				"-n", namespace, "--ignore-not-found=true")
+			_, _ = utils.Run(cmd)
+		})
+
+		// CRD Tests - ResourceTemplateData
+		It("should create and manage ResourceTemplateData resources", func() {
+			By("creating a ResourceTemplateData")
+			rtdYAML := `
+apiVersion: es.eck.github.com/v1alpha1
+kind: ResourceTemplateData
+metadata:
+  name: e2e-test-template-data
+  namespace: eck-custom-resources-system
+spec:
+  targetInstance:
+    name: elasticsearch
+    namespace: elastic-system
+  values:
+    environment: e2e-test
+    version: "1.0.0"
+`
+			cmd := exec.Command("kubectl", "apply", "-f", "-")
+			cmd.Stdin = strings.NewReader(rtdYAML)
+			output, err := utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred(), "Failed to create ResourceTemplateData: %s", output)
+
+			By("verifying the ResourceTemplateData was created")
+			verifyRTDCreated := func(g Gomega) {
+				cmd := exec.Command("kubectl", "get", "resourcetemplatedata", "e2e-test-template-data",
+					"-n", namespace, "-o", "jsonpath={.metadata.name}")
+				output, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(output).To(Equal("e2e-test-template-data"))
+			}
+			Eventually(verifyRTDCreated, 30*time.Second, time.Second).Should(Succeed())
+
+			By("cleaning up the ResourceTemplateData")
+			cmd = exec.Command("kubectl", "delete", "resourcetemplatedata", "e2e-test-template-data",
+				"-n", namespace, "--ignore-not-found=true")
+			_, _ = utils.Run(cmd)
+		})
 	})
 })
 

@@ -57,6 +57,7 @@ const (
 	IngestPipelineReasonPending   = "Pending"
 	IngestPipelineReasonSucceeded = "Succeeded"
 	IngestPipelineReasonFailed    = "Failed"
+	IngestPipelineReasonBlocked   = "Blocked"
 )
 
 //+kubebuilder:object:root=true

@@ -82,7 +82,7 @@ func (r *IndexPatternReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		Req:             req,
 	}
 
-	if indexPattern.ObjectMeta.DeletionTimestamp.IsZero() {
+	if indexPattern.DeletionTimestamp.IsZero() {
 
 		if err := kibanaUtils.DependenciesFulfilled(kibanaClient, indexPattern.Spec.GetSavedObject()); err != nil {
 			r.Recorder.Event(&indexPattern, "Warning", "Missing dependencies",

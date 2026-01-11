@@ -82,7 +82,7 @@ func (r *LensReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		Req:             req,
 	}
 
-	if lens.ObjectMeta.DeletionTimestamp.IsZero() {
+	if lens.DeletionTimestamp.IsZero() {
 		if err := kibanaUtils.DependenciesFulfilled(kibanaClient, lens.Spec.GetSavedObject()); err != nil {
 			r.Recorder.Event(&lens, "Warning", "Missing dependencies",
 				fmt.Sprintf("Some of declared dependencies are not present yet: %s", err.Error()))

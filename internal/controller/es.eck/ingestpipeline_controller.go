@@ -20,11 +20,13 @@ import (
 	"context"
 	"eck-custom-resources/utils/template"
 	"fmt"
+	"time"
 
 	configv2 "eck-custom-resources/api/config/v2"
 	"eck-custom-resources/utils"
 	esutils "eck-custom-resources/utils/elasticsearch"
 
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 
@@ -80,7 +82,7 @@ func (r *IngestPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return utils.GetRequeueResult(), client.IgnoreNotFound(createClientErr)
 	}
 
-	if ingestPipeline.ObjectMeta.DeletionTimestamp.IsZero() {
+	if ingestPipeline.DeletionTimestamp.IsZero() {
 		logger.Info("Creating/Updating object", "ingestPipeline", ingestPipeline.Name)
 		// Determine the body to use - either rendered from template or original
 		body, err := template.FetchAndRenderTemplate(
@@ -97,15 +99,71 @@ func (r *IngestPipelineReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			return utils.GetRequeueResult(), err
 		}
 
+		// Create or update the Ingest pipeline in Elasticsearch
 		logger.Info("Creating/Updating Ingest pipeline", "id", req.Name)
+
+		// Define condition types for this resource
+		conditionTypes := esutils.ResourceConditions{
+			InitialDeploymentType: eseckv1alpha1.IngestPipelineConditionTypeInitialDeployment,
+			LastUpdateType:        eseckv1alpha1.IngestPipelineConditionTypeLastUpdate,
+			ReasonSucceeded:       eseckv1alpha1.IngestPipelineReasonSucceeded,
+			ReasonFailed:          eseckv1alpha1.IngestPipelineReasonFailed,
+			ReasonPending:         eseckv1alpha1.IngestPipelineReasonPending,
+			ReasonBlocked:         eseckv1alpha1.IngestPipelineReasonBlocked,
+		}
+
+		// Check if this is the initial deployment
+		isInitialDeployment := esutils.IsInitialDeployment(ingestPipeline.Status.Conditions, conditionTypes)
+
+		// If not initial deployment and UpdateMode is not Overwrite, check if the pipeline was modified externally in Elasticsearch
+		if !isInitialDeployment && ingestPipeline.Spec.UpdatePolicy.UpdateMode != eseckv1alpha1.UpdateModeOverwrite {
+			pipeline, err := esutils.GetIngestPipeline(esClient, ingestPipeline.Name)
+			if err != nil {
+				logger.Error(err, "Failed to get ingest pipeline from Elasticsearch")
+				// Continue with update if we can't check the timestamp
+			} else if pipeline != nil {
+				modResult := esutils.CheckExternalModification(ingestPipeline.Status.Conditions, pipeline.Meta, conditionTypes)
+				if modResult.Modified {
+					logger.Info("Ingest pipeline was modified externally in Elasticsearch, skipping update",
+						"esUpdatedAt", modResult.ESUpdatedAt.Format(time.RFC3339))
+					r.Recorder.Event(&ingestPipeline, "Warning", "ExternalModification",
+						fmt.Sprintf("Ingest pipeline %s was modified externally in Elasticsearch, skipping update", ingestPipeline.Name))
+
+					meta.SetStatusCondition(&ingestPipeline.Status.Conditions, *modResult.ConditionToSet)
+					ingestPipeline.Status.ObservedGeneration = ingestPipeline.Generation
+					if statusErr := r.Status().Update(ctx, &ingestPipeline); statusErr != nil {
+						logger.Error(statusErr, "Failed to update IngestPipeline status")
+					}
+					return ctrl.Result{}, nil
+				}
+			}
+		}
+
 		res, err := esutils.UpsertIngestPipeline(esClient, ingestPipeline, body)
 
 		if err == nil {
 			r.Recorder.Event(&ingestPipeline, "Normal", "Created",
 				fmt.Sprintf("Created/Updated %s/%s %s", ingestPipeline.APIVersion, ingestPipeline.Kind, ingestPipeline.Name))
+
+			// Get the pipeline to extract timestamps and set success conditions
+			pipeline, pipelineErr := esutils.GetIngestPipeline(esClient, ingestPipeline.Name)
+			var esMeta map[string]any
+			if pipelineErr == nil && pipeline != nil {
+				esMeta = pipeline.Meta
+			}
+			esutils.SetSuccessConditions(&ingestPipeline.Status.Conditions, esMeta, isInitialDeployment, conditionTypes)
 		} else {
 			r.Recorder.Event(&ingestPipeline, "Warning", "Failed to create/update",
 				fmt.Sprintf("Failed to create/update %s/%s %s: %s", ingestPipeline.APIVersion, ingestPipeline.Kind, ingestPipeline.Name, err.Error()))
+
+			esutils.SetFailureConditions(&ingestPipeline.Status.Conditions, isInitialDeployment, conditionTypes, err.Error())
+		}
+
+		// Update status with observed generation
+		ingestPipeline.Status.ObservedGeneration = ingestPipeline.Generation
+		if statusErr := r.Status().Update(ctx, &ingestPipeline); statusErr != nil {
+			logger.Error(statusErr, "Failed to update IngestPipeline status")
+			// Don't return error here, continue with the main operation result
 		}
 
 		if err := r.addFinalizer(&ingestPipeline, finalizer, ctx); err != nil {

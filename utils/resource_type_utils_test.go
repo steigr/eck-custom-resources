@@ -36,7 +36,7 @@ type TestReference struct {
 func (t *TestResourceWithTemplate) DeepCopyObject() runtime.Object {
 	return &TestResourceWithTemplate{
 		TypeMeta:   t.TypeMeta,
-		ObjectMeta: *t.ObjectMeta.DeepCopy(),
+		ObjectMeta: *t.DeepCopy(),
 		Spec:       t.Spec,
 	}
 }
@@ -54,7 +54,7 @@ type TestSpecWithoutTemplate struct {
 func (t *TestResourceWithoutTemplate) DeepCopyObject() runtime.Object {
 	return &TestResourceWithoutTemplate{
 		TypeMeta:   t.TypeMeta,
-		ObjectMeta: *t.ObjectMeta.DeepCopy(),
+		ObjectMeta: *t.DeepCopy(),
 		Spec:       t.Spec,
 	}
 }
@@ -68,7 +68,7 @@ type TestResourceList struct {
 func (t *TestResourceList) DeepCopyObject() runtime.Object {
 	return &TestResourceList{
 		TypeMeta: t.TypeMeta,
-		ListMeta: *t.ListMeta.DeepCopy(),
+		ListMeta: *t.DeepCopy(),
 	}
 }
 

@@ -74,7 +74,7 @@ func (r *ResourceTemplateDataReconciler) Reconcile(ctx context.Context, req ctrl
 	}
 	logger.Info("Using target instance namespace", "namespace", targetInstanceNamespace)
 
-	if resourceTemplateData.ObjectMeta.DeletionTimestamp.IsZero() {
+	if resourceTemplateData.DeletionTimestamp.IsZero() {
 		if err := r.triggerDependentResourcesReconcile(ctx, &resourceTemplateData, resourceTemplateData.Spec.TargetConfig.ElasticsearchInstance, targetInstanceNamespace); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -145,7 +145,7 @@ func (r *ResourceTemplateDataReconciler) triggerDependentResourcesReconcile(ctx 
 			annotations[utils.LastUpdateTriggeredAtAnnotation] = fmt.Sprintf("%d", time.Now().UnixMilli())
 			dependentResource.SetAnnotations(annotations)
 
-			err = r.Client.Update(ctx, &dependentResource)
+			err = r.Update(ctx, &dependentResource)
 			if err != nil {
 				return err
 			}

@@ -8,7 +8,7 @@ import (
 	eseckv1alpha1 "eck-custom-resources/api/es.eck/v1alpha1"
 
 	"helm.sh/helm/v4/pkg/chart/common"
-	"helm.sh/helm/v4/pkg/chart/v2"
+	v2 "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/engine"
 
 	"k8s.io/apimachinery/pkg/labels"

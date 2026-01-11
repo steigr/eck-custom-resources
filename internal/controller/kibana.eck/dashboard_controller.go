@@ -80,7 +80,7 @@ func (r *DashboardReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		Req:             req,
 	}
 
-	if dashboard.ObjectMeta.DeletionTimestamp.IsZero() {
+	if dashboard.DeletionTimestamp.IsZero() {
 
 		if err := kibanaUtils.DependenciesFulfilled(kibanaClient, dashboard.Spec.GetSavedObject()); err != nil {
 			r.Recorder.Event(&dashboard, "Warning", "Missing dependencies",

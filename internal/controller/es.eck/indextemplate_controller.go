@@ -84,7 +84,7 @@ func (r *IndexTemplateReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return utils.GetRequeueResult(), err
 	}
 
-	if indexTemplate.ObjectMeta.DeletionTimestamp.IsZero() {
+	if indexTemplate.DeletionTimestamp.IsZero() {
 		logger.Info("Creating/Updating index template", "index template", req.Name)
 		res, err := esutils.UpsertIndexTemplate(esClient, indexTemplate)
 

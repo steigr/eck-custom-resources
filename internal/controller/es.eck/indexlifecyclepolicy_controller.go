@@ -78,7 +78,7 @@ func (r *IndexLifecyclePolicyReconciler) Reconcile(ctx context.Context, req ctrl
 		return utils.GetRequeueResult(), client.IgnoreNotFound(createClientErr)
 	}
 
-	if indexLifecyclePolicy.ObjectMeta.DeletionTimestamp.IsZero() {
+	if indexLifecyclePolicy.DeletionTimestamp.IsZero() {
 		logger.Info("Creating/Updating index lifecycle policy", "index lifecycle policy", req.Name)
 		res, err := esutils.UpsertIndexLifecyclePolicy(esClient, indexLifecyclePolicy)
 

@@ -80,7 +80,7 @@ func (r *SpaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		Req:             req,
 	}
 
-	if space.ObjectMeta.DeletionTimestamp.IsZero() {
+	if space.DeletionTimestamp.IsZero() {
 		logger.Info("Creating/Updating kibana space", "id", req.Name)
 		res, err := kibanaUtils.UpsertSpace(kibanaClient, space)
 

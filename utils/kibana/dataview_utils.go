@@ -119,9 +119,7 @@ func removeName(objectJson string, id string) (*string, error) {
 		return nil, err
 	}
 
-	if _, exists := body["name"]; exists {
-		delete(body, "name")
-	}
+	delete(body, "name")
 
 	marshalledBody, err := json.Marshal(body)
 	if err != nil {

@@ -78,7 +78,7 @@ func (r *SnapshotLifecyclePolicyReconciler) Reconcile(ctx context.Context, req c
 		return utils.GetRequeueResult(), client.IgnoreNotFound(createClientErr)
 	}
 
-	if snapshotLifecyclePolicy.ObjectMeta.DeletionTimestamp.IsZero() {
+	if snapshotLifecyclePolicy.DeletionTimestamp.IsZero() {
 		res, err := esutils.UpsertSnapshotLifecyclePolicy(esClient, snapshotLifecyclePolicy)
 
 		if err == nil {
