@@ -1,0 +1,2 @@
+# Default values for eck-custom-resources-operator-crds.
+# This chart contains only CRDs and does not require any configuration values.
