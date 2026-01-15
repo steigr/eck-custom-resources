@@ -62,9 +62,9 @@ func TestCommonTemplatingSpec_Empty(t *testing.T) {
 
 func TestCommonTemplatingSpec_IsEnabled(t *testing.T) {
 	tests := []struct {
-		name    string
-		spec    CommonTemplatingSpec
-		want    bool
+		name string
+		spec CommonTemplatingSpec
+		want bool
 	}{
 		{
 			name: "nil Enabled defaults to true",
