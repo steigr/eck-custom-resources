@@ -66,6 +66,11 @@ func TestFetchAndRenderTemplate(t *testing.T) {
 		},
 	}
 
+	// boolPtr is a helper function to create a pointer to a bool
+	boolPtr := func(b bool) *bool {
+		return &b
+	}
+
 	tests := []struct {
 		name             string
 		templateSpec     eseckv1alpha1.CommonTemplatingSpec
@@ -90,6 +95,32 @@ func TestFetchAndRenderTemplate(t *testing.T) {
 			body:             `{"static": "content"}`,
 			defaultNamespace: "default",
 			want:             `{"static": "content"}`,
+			wantErr:          false,
+		},
+		{
+			name: "enabled false returns original body even with references",
+			templateSpec: eseckv1alpha1.CommonTemplatingSpec{
+				Enabled: boolPtr(false),
+				References: []eseckv1alpha1.CommonTemplatingSpecReference{
+					{Name: "prod-config", Namespace: "default"},
+				},
+			},
+			body:             `{"env": "{{ index .Values "default" "prod-config" "environment" }}"}`,
+			defaultNamespace: "default",
+			want:             `{"env": "{{ index .Values "default" "prod-config" "environment" }}"}`,
+			wantErr:          false,
+		},
+		{
+			name: "enabled true with references renders template",
+			templateSpec: eseckv1alpha1.CommonTemplatingSpec{
+				Enabled: boolPtr(true),
+				References: []eseckv1alpha1.CommonTemplatingSpecReference{
+					{Name: "prod-config", Namespace: "default"},
+				},
+			},
+			body:             `{"env": "{{ index .Values "default" "prod-config" "environment" }}"}`,
+			defaultNamespace: "default",
+			want:             `{"env": "production"}`,
 			wantErr:          false,
 		},
 		{

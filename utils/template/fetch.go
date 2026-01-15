@@ -20,8 +20,8 @@ func FetchAndRenderTemplate(
 	defaultNamespace string,
 	restConfig *rest.Config,
 ) (string, error) {
-	// If no template references, return the original body
-	if !HasTemplateReferences(templateSpec) {
+	// If templating is not enabled or no references, return the original body
+	if !IsTemplate(templateSpec) {
 		return body, nil
 	}
 

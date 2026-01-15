@@ -87,8 +87,14 @@ func FetchResourceTemplateData(
 	return result, nil
 }
 
-// HasTemplateReferences checks if the template spec has any references defined.
-func HasTemplateReferences(templateSpec eseckv1alpha1.CommonTemplatingSpec) bool {
+// IsTemplate checks if the template spec is enabled and has any references defined.
+// Returns false if Enabled is false. Returns true if Enabled is true (or not set) and has references.
+func IsTemplate(templateSpec eseckv1alpha1.CommonTemplatingSpec) bool {
+	// Check if templating is enabled first
+	if !templateSpec.IsEnabled() {
+		return false
+	}
+	// Then check if there are any references
 	return len(templateSpec.References) > 0
 }
 

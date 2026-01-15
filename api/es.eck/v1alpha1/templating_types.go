@@ -1,16 +1,11 @@
 package v1alpha1
 
-type CommonTemplatingSpec struct {
-	// +optional
-	References []CommonTemplatingSpecReference `json:"references,omitempty"`
-}
+import (
+	configv2 "eck-custom-resources/api/config/v2"
+)
 
-type CommonTemplatingSpecReference struct {
-	// +optional
-	Name string `json:"name,omitempty"`
-	// +optional
-	Namespace string `json:"namespace,omitempty"`
-	// labelSeclector to select ResourceTemplateData objects
-	// +optional
-	LabelSelector map[string]string `json:"labelSelector,omitempty"`
-}
+// CommonTemplatingSpec is an alias to the config/v2 CommonTemplatingSpec
+type CommonTemplatingSpec = configv2.CommonTemplatingSpec
+
+// CommonTemplatingSpecReference is an alias to the config/v2 CommonTemplatingSpecReference
+type CommonTemplatingSpecReference = configv2.CommonTemplatingSpecReference

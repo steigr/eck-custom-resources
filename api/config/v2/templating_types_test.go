@@ -1,5 +1,5 @@
 /*
-Copyright 2022.
+Copyright 2025.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package v2
 
 import (
 	"testing"
@@ -62,9 +62,9 @@ func TestCommonTemplatingSpec_Empty(t *testing.T) {
 
 func TestCommonTemplatingSpec_IsEnabled(t *testing.T) {
 	tests := []struct {
-		name    string
-		spec    CommonTemplatingSpec
-		want    bool
+		name string
+		spec CommonTemplatingSpec
+		want bool
 	}{
 		{
 			name: "nil Enabled defaults to true",

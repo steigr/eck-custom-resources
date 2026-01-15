@@ -19,19 +19,24 @@ func jsonValue(v interface{}) apiextensionsv1.JSON {
 	return apiextensionsv1.JSON{Raw: data}
 }
 
-func TestHasTemplateReferences(t *testing.T) {
+// boolPtr is a helper function to create a pointer to a bool
+func boolPtr(b bool) *bool {
+	return &b
+}
+
+func TestIsTemplate(t *testing.T) {
 	tests := []struct {
 		name         string
 		templateSpec eseckv1alpha1.CommonTemplatingSpec
 		want         bool
 	}{
 		{
-			name:         "empty template spec",
+			name:         "empty template spec - enabled defaults to true, no refs",
 			templateSpec: eseckv1alpha1.CommonTemplatingSpec{},
 			want:         false,
 		},
 		{
-			name: "nil references",
+			name: "nil references - enabled defaults to true",
 			templateSpec: eseckv1alpha1.CommonTemplatingSpec{
 				References: nil,
 			},
@@ -45,7 +50,7 @@ func TestHasTemplateReferences(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "with name reference",
+			name: "with name reference - enabled defaults to true",
 			templateSpec: eseckv1alpha1.CommonTemplatingSpec{
 				References: []eseckv1alpha1.CommonTemplatingSpecReference{
 					{Name: "my-template-data"},
@@ -73,13 +78,47 @@ func TestHasTemplateReferences(t *testing.T) {
 			},
 			want: true,
 		},
+		{
+			name: "enabled explicitly true with references",
+			templateSpec: eseckv1alpha1.CommonTemplatingSpec{
+				Enabled: boolPtr(true),
+				References: []eseckv1alpha1.CommonTemplatingSpecReference{
+					{Name: "my-template-data"},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "enabled explicitly false with references",
+			templateSpec: eseckv1alpha1.CommonTemplatingSpec{
+				Enabled: boolPtr(false),
+				References: []eseckv1alpha1.CommonTemplatingSpecReference{
+					{Name: "my-template-data"},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "enabled explicitly false without references",
+			templateSpec: eseckv1alpha1.CommonTemplatingSpec{
+				Enabled: boolPtr(false),
+			},
+			want: false,
+		},
+		{
+			name: "enabled explicitly true without references",
+			templateSpec: eseckv1alpha1.CommonTemplatingSpec{
+				Enabled: boolPtr(true),
+			},
+			want: false,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := HasTemplateReferences(tt.templateSpec)
+			got := IsTemplate(tt.templateSpec)
 			if got != tt.want {
-				t.Errorf("HasTemplateReferences() = %v, want %v", got, tt.want)
+				t.Errorf("IsTemplate() = %v, want %v", got, tt.want)
 			}
 		})
 	}
