@@ -49,19 +49,31 @@ spec:
                     type: string
                 type: object
               template:
+                description: CommonTemplatingSpec defines the templating configuration
+                  for resources
                 properties:
+                  enabled:
+                    default: true
+                    description: Enabled indicates if templating is active. Defaults
+                      to true.
+                    type: boolean
                   references:
+                    description: References to ResourceTemplateData objects
                     items:
+                      description: CommonTemplatingSpecReference defines a reference
+                        to a ResourceTemplateData object
                       properties:
                         labelSelector:
                           additionalProperties:
                             type: string
-                          description: labelSeclector to select ResourceTemplateData
+                          description: LabelSelector to select ResourceTemplateData
                             objects
                           type: object
                         name:
+                          description: Name of the ResourceTemplateData object
                           type: string
                         namespace:
+                          description: Namespace of the ResourceTemplateData object
                           type: string
                       type: object
                     type: array
