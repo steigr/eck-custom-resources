@@ -49,6 +49,13 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
+.PHONY: update-crds-chart
+update-crds-chart: manifests ## Update the CRDs Helm chart with the latest generated CRDs.
+	@echo "Updating CRDs chart..."
+	@rm -f charts/eck-custom-resources-operator-crds/templates/*.yaml
+	@cp config/crd/bases/*.yaml charts/eck-custom-resources-operator-crds/templates/
+	@echo "CRDs chart updated successfully."
+
 .PHONY: fmt
 fmt: ## Run go fmt against code.
 	go fmt ./...
